@@ -1,12 +1,14 @@
-# Anki 卡片模板
+# Anki Markdown Template
 
-用于 Anki 的卡片模板，支持 Markdown 渲染、代码高亮、数学公式、Mermaid 图表等功能。
+一套可直接复制到 Anki 的卡片模板，支持 Markdown 渲染、代码高亮、数学公式和 Mermaid 图表。
+
+本项目从 [`qrkks/useful-scripts`](https://github.com/qrkks/useful-scripts) 独立出来，以便单独维护和发布。
 
 ## 文件说明
 
 - `front.html` - 卡片正面模板
 - `back.html` - 卡片背面模板
-- `css.html` - 样式和脚本文件（包含 CSS 和 JavaScript）
+- `css.html` - 粘贴到 Anki“样式”区域的 CSS 和 JavaScript
 
 ## 功能特性
 
@@ -20,12 +22,13 @@
 
 ## 使用方法
 
-1. 打开 Anki，进入 **工具 → 管理笔记类型**
-2. 选择要使用的笔记类型，点击 **卡片...**
-3. 在 **正面模板** 中，复制 `front.html` 的内容
-4. 在 **背面模板** 中，复制 `back.html` 的内容
-5. 在 **样式** 中，复制 `css.html` 的内容
-6. 保存并关闭
+1. 下载或克隆本仓库
+2. 打开 Anki，进入 **工具 → 管理笔记类型**
+3. 选择要使用的笔记类型，点击 **卡片...**
+4. 将 `front.html` 的内容复制到 **正面模板**
+5. 将 `back.html` 的内容复制到 **背面模板**
+6. 将 `css.html` 的内容复制到 **样式**
+7. 保存后先用测试卡片确认显示效果
 
 ## 注意事项
 
@@ -72,5 +75,5 @@ def hello():
 
 ## 许可证
 
-本模板遵循仓库的 MIT License。
+本模板采用 [MIT License](LICENSE)。
 
