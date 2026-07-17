@@ -1,79 +1,76 @@
 # Anki Markdown Template
 
-一套可直接复制到 Anki 的卡片模板，支持 Markdown 渲染、代码高亮、数学公式和 Mermaid 图表。
+一套可直接复制到 Anki 的卡片模板，支持 Markdown、代码高亮、KaTeX 数学公式、Mermaid 图表、暗色模式和代码复制。
 
 本项目从 [`qrkks/useful-scripts`](https://github.com/qrkks/useful-scripts) 独立出来，以便单独维护和发布。
 
-## 文件说明
+## 安装
 
-- `front.html` - 卡片正面模板
-- `back.html` - 卡片背面模板
-- `css.html` - 粘贴到 Anki“样式”区域的 CSS 和 JavaScript
+打开 Anki 的 **工具 → 管理笔记类型 → 卡片...**，然后复制三个生成文件：
 
-## 功能特性
+1. 将 [`dist/front.html`](dist/front.html) 的全部内容复制到 **正面模板**。
+2. 将 [`dist/back.html`](dist/back.html) 的全部内容复制到 **背面模板**。
+3. 将 [`dist/styling.css`](dist/styling.css) 的全部内容复制到 **样式**。
+4. 保存后先使用测试卡片确认显示效果。
 
-- ✅ **Markdown 支持**：完整的 Markdown 语法支持
-- ✅ **代码高亮**：支持多种编程语言的语法高亮
-- ✅ **数学公式**：支持 LaTeX 数学公式渲染（KaTeX）
-- ✅ **Mermaid 图表**：支持流程图、时序图等图表渲染
-- ✅ **暗黑模式**：自动适配 Anki 的暗黑模式
-- ✅ **代码复制**：点击代码块标签可快速复制代码
-- ✅ **响应式设计**：适配不同屏幕尺寸
+`styling.css` 是纯 CSS；JavaScript 已由构建脚本嵌入正面和背面模板，不再依赖从 Anki Styling 区执行脚本。
 
-## 使用方法
+## 功能
 
-1. 下载或克隆本仓库
-2. 打开 Anki，进入 **工具 → 管理笔记类型**
-3. 选择要使用的笔记类型，点击 **卡片...**
-4. 将 `front.html` 的内容复制到 **正面模板**
-5. 将 `back.html` 的内容复制到 **背面模板**
-6. 将 `css.html` 的内容复制到 **样式**
-7. 保存后先用测试卡片确认显示效果
+- Markdown 标题、列表、链接、表格和强调
+- fenced code block 与行内代码
+- highlight.js 代码高亮和点击复制
+- KaTeX 行内公式 `$...$` 与块级公式 `$$...$$`
+- Mermaid 图表
+- Anki 暗色模式和响应式布局
+- DOMPurify HTML 清理与 Mermaid strict 安全模式
 
-## 注意事项
+## 内容规则
 
-- 首次使用需要网络连接以加载必要的资源库（CDN）
-- 部分功能依赖外部 CDN，离线环境可能无法正常工作
-- 建议在测试卡片中验证功能后再批量使用
+本模板采用 **Markdown 优先、有限 HTML、代码原样保留** 的规则：
 
-## 支持的语法
+- fenced code block 和行内代码中的内容不会参与 HTML 清理，`<div>`、`<script>` 等标签会作为代码文字显示。
+- Anki 编辑器常用的无属性 `<div>`、`<div dir="auto">` 和 `<br>` 会转换成换行。
+- 带 `class`、`style` 等属性的 `<div>` 以及图片、表格、链接等其他 HTML 会保留，并在渲染后交给 DOMPurify 清理。
+- HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
 
-### Markdown
+这种规则避免猜测和反向转换任意富文本，同时保证 HTML 教学代码不会被当成真实页面元素。
 
-- 标题、列表、链接、图片等标准 Markdown 语法
-- 代码块和行内代码
-- 表格
-- 强调和加粗
+## 资源加载
 
-### 数学公式
+运行时会先尝试从 Anki 媒体目录加载以下文件，失败后再使用固定版本的 CDN：
 
-- 行内公式：`$公式$`
-- 块级公式：`$$公式$$`
+- `_purify-3.4.12.min.js`
+- `_highlight-11.11.1.js`
+- `_highlight-github-11.11.1.css`
+- `_highlight-github-dark-11.11.1.css`
+- `_katex-0.16.22.css`
+- `_katex-0.16.22.min.js`
+- `_auto-render-0.16.22.js`
+- `_mhchem-0.16.22.js`
+- `_markdown-it-14.1.0.min.js`
+- `_mermaid-10.9.0.min.js`
 
-### Mermaid 图表
+未安装本地资源时需要联网。单个可选资源加载失败只会关闭对应功能，不会阻止其他内容显示。
 
-使用代码块语法，语言指定为 `mermaid`：
+## 开发
 
-````markdown
-```mermaid
-graph TD
-    A[开始] --> B[处理]
-    B --> C[结束]
+源文件位于 `src/`：
+
+- `src/front.html`、`src/back.html`：模板结构
+- `src/styling.css`：纯 CSS
+- `src/template.js`：渲染逻辑
+
+`dist/` 中的 `front.html`、`back.html` 和 `styling.css` 是生成文件，请不要直接修改。
+
+```powershell
+pnpm run build
+pnpm test
+pnpm run check
 ```
-````
 
-### 代码高亮
-
-使用代码块语法，指定语言名称：
-
-````markdown
-```python
-def hello():
-    print("Hello, World!")
-```
-````
+`pnpm run check` 会重新生成模板、检查 JavaScript 语法并运行回归测试。
 
 ## 许可证
 
 本模板采用 [MIT License](LICENSE)。
-

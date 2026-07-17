@@ -1,0 +1,12 @@
+{
+  "name": "anki-markdown-template",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "pnpm run build && node --check src/template.js && pnpm test"
+  }
+}
