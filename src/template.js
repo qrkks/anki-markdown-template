@@ -177,7 +177,28 @@
       )
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/\n{3,}/g, "\n\n")
-      .replace(/^\n+|\n+$/g, "");
+      .replace(/^(?:[ \t]*\n)+/, "")
+      .replace(/\n+$/g, "");
+
+    // Anki/ODH fields may carry uniform leading indentation that Markdown
+    // misreads as a code block. Remove only the indentation shared by every
+    // non-empty line, preserving relative indentation within the content.
+    const contentLines = cleaned.split("\n");
+    const nonEmptyLines = contentLines.filter((line) => line.trim() !== "");
+    const commonIndent = nonEmptyLines.length
+      ? Math.min(
+          ...nonEmptyLines.map(
+            (line) => line.match(/^[ \t]*/)?.[0].length || 0,
+          ),
+        )
+      : 0;
+    if (commonIndent > 0) {
+      cleaned = contentLines
+        .map((line) =>
+          line.trim() === "" ? line : line.slice(commonIndent),
+        )
+        .join("\n");
+    }
 
     // Markdown tables cannot contain blank lines between adjacent rows.
     const lines = cleaned.split("\n");

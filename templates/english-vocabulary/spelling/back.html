@@ -1,0 +1,37 @@
+{{FrontSide}}
+
+<div id="answer" class="back-content spelling-content">
+    {{#发音}}
+    <div class="audio-row">
+        <hr class="audio-line POSS" />
+        <div class="audio-control">{{发音}}</div>
+        <hr class="audio-line POSS" />
+    </div>
+    {{/发音}}
+
+    <div class="Word">{{单词}}</div>
+    <div class="PhoneticSymbol">{{音标}}</div>
+
+    {{#例句}}
+    <section class="extra-section examples-section">
+        <div data-markdown class="En">{{例句}}</div>
+        {{#例句翻译}}
+        <div data-markdown class="Zh">{{例句翻译}}</div>
+        {{/例句翻译}}
+    </section>
+    {{/例句}}
+
+    {{#词组短语}}
+    <section class="extra-section">
+        <hr class="section-rule" />
+        <div data-markdown class="md">{{词组短语}}</div>
+    </section>
+    {{/词组短语}}
+
+    {{#拓展}}
+    <section class="extra-section">
+        <hr class="section-rule" />
+        <div data-markdown class="md">{{拓展}}</div>
+    </section>
+    {{/拓展}}
+</div>

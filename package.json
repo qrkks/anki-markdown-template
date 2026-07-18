@@ -6,6 +6,8 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "install:anki": "pnpm run build && node scripts/install-anki.mjs",
+    "install:anki:dry-run": "pnpm run build && node scripts/install-anki.mjs --dry-run",
     "test": "node --test",
     "check": "pnpm run build && node --check src/template.js && pnpm test"
   }

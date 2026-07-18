@@ -1,0 +1,73 @@
+{{FrontSide}}
+
+<div id="answer" class="back-content">
+    <!-- =====================
+       词性 1 与释义 1：居中
+       ===================== -->
+
+    {{#释义 1}}
+    <section class="sense-section sense-one">
+        {{#词性 1}}
+        <div class="external-pos-row">
+            <span class="pos-label POSR">{{词性 1}}</span>
+        </div>
+        {{/词性 1}}
+
+        <div class="Paraphrase">{{释义 1}}</div>
+    </section>
+    {{/释义 1}}
+
+    <!-- =====================
+       词性 2 与释义 2：左对齐
+       ===================== -->
+
+    {{#释义 2}}
+    <section class="sense-section sense-two sense-section-separated">
+        {{#词性 2}}
+        <div class="external-pos-row">
+            <span class="pos-label POSR">{{词性 2}}</span>
+        </div>
+        {{/词性 2}}
+
+        <div class="Paraphrase">{{释义 2}}</div>
+    </section>
+    {{/释义 2}}
+
+    <!-- =====================
+       例句与例句翻译
+       ===================== -->
+
+    {{#例句}}
+    <section class="extra-section examples-section">
+        <div data-markdown class="En example-block">{{例句}}</div>
+
+        {{#例句翻译}}
+        <div data-markdown class="Zh translation-block">{{例句翻译}}</div>
+        {{/例句翻译}}
+    </section>
+    {{/例句}}
+
+    <!-- =====================
+       词组短语
+       ===================== -->
+
+    {{#词组短语}}
+    <section class="extra-section">
+        <hr class="section-rule" />
+
+        <div data-markdown class="md">{{词组短语}}</div>
+    </section>
+    {{/词组短语}}
+
+    <!-- =====================
+       拓展
+       ===================== -->
+
+    {{#拓展}}
+    <section class="extra-section">
+        <hr class="section-rule" />
+
+        <div data-markdown class="md">{{拓展}}</div>
+    </section>
+    {{/拓展}}
+</div>

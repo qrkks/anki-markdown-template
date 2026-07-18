@@ -1,0 +1,26 @@
+<div class="front-content spelling-content">
+    <h1 class="cat S">SPELLING</h1>
+
+    <div class="prompt-content">
+        {{#词性 1}}
+        <div class="external-pos-row">
+            <span class="pos-label POSS">{{词性 1}}</span>
+        </div>
+        {{/词性 1}}
+
+        {{#释义 1}}
+        <div class="Paraphrase">{{释义 1}}</div>
+        {{/释义 1}}
+
+        {{#释义 2}}
+        <section class="sense-section sense-two sense-section-separated">
+            {{#词性 2}}
+            <div class="external-pos-row">
+                <span class="pos-label POSS">{{词性 2}}</span>
+            </div>
+            {{/词性 2}}
+            <div class="Paraphrase">{{释义 2}}</div>
+        </section>
+        {{/释义 2}}
+    </div>
+</div>

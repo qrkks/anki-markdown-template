@@ -39,6 +39,15 @@
 
 没有标记的 HTML 和条件块不会被 Markdown 渲染器改写。需要保留原生交互行为的内容应放在 Markdown 区域之外，也不要嵌套 `data-markdown` 容器。
 
+## 模板
+
+仓库目前包含两套模板：
+
+- `dist/front.html`、`dist/back.html` 和 `dist/styling.css`：基础模板。
+- [`templates/english-vocabulary`](templates/english-vocabulary)：英语词汇模板；所需字段和安装方法见目录内说明。
+
+两套模板共用 `src/template.js` 中的 Markdown 渲染核心。运行 `pnpm run build` 会同时生成它们，不需要在每套模板中手动复制脚本。
+
 ## 功能
 
 - Markdown 标题、列表、链接、表格和强调

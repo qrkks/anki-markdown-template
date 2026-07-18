@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import vm from "node:vm";
 import test from "node:test";
+import {
+  MODEL_NAME,
+  REQUIRED_FIELDS,
+  TEMPLATE_NAME,
+  TEMPLATE_NAMES,
+  installAnki,
+  validateExistingModel,
+} from "../scripts/install-anki.mjs";
 
 function extractFunction(source, name, nextName) {
   const start = source.indexOf(`function ${name}(`);
@@ -23,9 +31,149 @@ test("generated artifacts use pure CSS and executable card templates", async () 
   assert.match(front, /id=["']front["']/);
   assert.match(front, /<script>/);
   assert.match(back, /{{FrontSide}}/);
+  assert.match(back, /id=["']answer["']/);
   assert.match(back, /{{Back}}/);
   assert.match(back, /id=["']back["']/);
   assert.match(back, /<script>/);
+});
+
+test("English vocabulary preset is built with its required fields", async () => {
+  const [styling, front, back] = await Promise.all([
+    readFile("dist/english-vocabulary/styling.css", "utf8"),
+    readFile("dist/english-vocabulary/recite/front.html", "utf8"),
+    readFile("dist/english-vocabulary/recite/back.html", "utf8"),
+  ]);
+
+  assert.doesNotMatch(styling, /<\/?(?:style|script)>/i);
+  assert.match(front, /{{单词}}/);
+  assert.match(front, /{{音标}}/);
+  assert.match(front, /{{发音}}/);
+  assert.match(back, /{{FrontSide}}/);
+  for (const field of [
+    "词性 1",
+    "释义 1",
+    "词性 2",
+    "释义 2",
+    "例句",
+    "例句翻译",
+    "词组短语",
+    "拓展",
+  ]) {
+    assert.match(back, new RegExp(`{{${field}}}`));
+  }
+  assert.equal(front.match(/<script>/g)?.length ?? 0, 0);
+  assert.equal(back.match(/<script>/g)?.length, 1);
+});
+
+test("SPELLING and DICTATION use the shared card layout", async () => {
+  for (const name of ["spelling", "dictation"]) {
+    const [front, back] = await Promise.all([
+      readFile(`dist/english-vocabulary/${name}/front.html`, "utf8"),
+      readFile(`dist/english-vocabulary/${name}/back.html`, "utf8"),
+    ]);
+    assert.match(front, /class=["'][^"']*\bfront-content\b/);
+    assert.match(front, /class=["'][^"']*\bcat\b/);
+    assert.match(back, /id=["']answer["']/);
+    assert.doesNotMatch(front, /<script>/);
+    assert.equal(back.match(/<script>/g)?.length, 1);
+    const templateMarkup = back.split("<script>", 1)[0];
+    assert.equal(templateMarkup.match(/data-markdown/g)?.length, 4);
+    assert.match(templateMarkup, /data-markdown class=["']md["']/);
+    assert.doesNotMatch(templateMarkup, /{{hint:词组短语}}/);
+  }
+
+  const dictationBack = await readFile(
+    "dist/english-vocabulary/dictation/back.html",
+    "utf8",
+  );
+  assert.match(dictationBack, /class=["']sense-section sense-one["']/);
+
+  const spellingFront = await readFile(
+    "dist/english-vocabulary/spelling/front.html",
+    "utf8",
+  );
+  assert.match(
+    spellingFront,
+    /class=["']sense-section sense-two sense-section-separated["']/,
+  );
+});
+
+test("English vocabulary CSS scopes separators and supports night mode", async () => {
+  const styling = await readFile(
+    "templates/english-vocabulary/styling.css",
+    "utf8",
+  );
+
+  assert.match(styling, /\.card\.nightMode\s*{/);
+  assert.match(styling, /\.md hr\s*{/);
+  assert.doesNotMatch(styling, /\.Paraphrase hr\s*{/);
+  assert.match(
+    styling,
+    /\.sense-section-separated\s*{[^}]*border-top:\s*2px solid var\(--blue\);/s,
+  );
+  assert.match(styling, /\.spelling-content \.sense-section-separated\s*{/);
+  assert.match(styling, /\.dictation-content \.sense-section-separated\s*{/);
+  assert.match(styling, /\.section-rule\s*{[^}]*height:\s*3px;/s);
+  assert.doesNotMatch(styling, /^hr\s*{/m);
+  assert.doesNotMatch(styling, /^h\s*{/m);
+  assert.doesNotMatch(styling, /^u\s*{/m);
+  assert.match(styling, /var\(--content-width\)/);
+  assert.doesNotMatch(styling, /--back-(?:width|max-width)/);
+  assert.match(styling, /--font-chinese:/);
+  assert.match(styling, /--font-latin:/);
+  assert.match(styling, /"Microsoft YaHei"/);
+  assert.doesNotMatch(styling, /KaiTi|STKaiti|Kaiti SC/);
+  assert.doesNotMatch(styling, /@font-face|_(?:kt|times)\.ttf/);
+  assert.match(styling, /h\.POSS/);
+  assert.match(styling, /hr\.POSS/);
+});
+
+test("Anki installer refuses legacy field names without mutating them", () => {
+  const legacyNames = new Map([
+    ["词性 1", "词性1"],
+    ["释义 1", "释义1"],
+    ["词性 2", "词性2"],
+    ["释义 2", "释义2"],
+  ]);
+  const legacyFields = REQUIRED_FIELDS.map(
+    (field) => legacyNames.get(field) || field,
+  );
+  assert.throws(
+    () => validateExistingModel(legacyFields, {[TEMPLATE_NAME]: {}}),
+    /检测到旧字段名/,
+  );
+});
+
+test("Anki installer updates all managed templates and shared styling", async () => {
+  const actions = [];
+  const currentTemplates = {
+    [TEMPLATE_NAME]: {Front: "old front", Back: "old back"},
+    SPELLING: {Front: "keep", Back: "keep"},
+    DICTATION: {Front: "keep", Back: "keep"},
+    UNMANAGED: {Front: "keep", Back: "keep"},
+  };
+  const request = async (action, params) => {
+    actions.push({action, params});
+    if (action === "version") return 6;
+    if (action === "modelNames") return [MODEL_NAME];
+    if (action === "modelFieldNames") return REQUIRED_FIELDS;
+    if (action === "modelTemplates") return currentTemplates;
+    if (action === "modelStyling") return {css: "old css"};
+    return null;
+  };
+
+  await installAnki({
+    request,
+    saveBackup: async () => "mock-backup.json",
+    log() {},
+  });
+
+  const templateUpdate = actions.find(
+    ({action}) => action === "updateModelTemplates",
+  );
+  assert.deepEqual(Object.keys(templateUpdate.params.model.templates), TEMPLATE_NAMES);
+  assert.equal(templateUpdate.params.model.templates.UNMANAGED, undefined);
+  assert.ok(actions.some(({action}) => action === "updateModelStyling"));
 });
 
 test("cleanHTML preserves Markdown indentation and literal HTML entities", async () => {
@@ -44,6 +192,36 @@ test("cleanHTML preserves Markdown indentation and literal HTML entities", async
   assert.equal(
     context.cleanHTML("&lt;b&gt;literal&lt;/b&gt;"),
     "&lt;b&gt;literal&lt;/b&gt;",
+  );
+});
+
+test("cleanHTML removes only indentation shared by the whole field", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({
+    window: {},
+    debug() {},
+    console: {log() {}, warn() {}, error() {}},
+  });
+  vm.runInContext(
+    `${extractFunction(source, "cleanHTML", "escapeHtml")}; this.cleanHTML = cleanHTML;`,
+    context,
+  );
+
+  assert.equal(
+    context.cleanHTML("    ordinary text\n    keep later indentation"),
+    "ordinary text\nkeep later indentation",
+  );
+  assert.equal(
+    context.cleanHTML("  \n\t\n    ordinary text"),
+    "ordinary text",
+  );
+  assert.equal(
+    context.cleanHTML("    - parent\n      - child"),
+    "- parent\n  - child",
+  );
+  assert.equal(
+    context.cleanHTML("first line\n    intentional later indentation"),
+    "first line\n    intentional later indentation",
   );
 });
 

@@ -1,0 +1,671 @@
+/* 单词卡片模板：整理版 */
+
+/* =========================
+   可统一调整的尺寸
+   ========================= */
+
+:root {
+    --font-chinese:
+        "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC",
+        "Source Han Sans SC", sans-serif;
+    --font-latin: "Times New Roman", Times, serif;
+
+    --card-font-size: 25px;
+    --word-font-size: 32px;
+    --definition-font-size: 23px;
+    --markdown-font-size: 22px;
+    --example-font-size: 18px;
+
+    --content-width: 86%;
+    --content-max-width: 1460px;
+
+    --blue: #1f6f9f;
+    --green: #347a2b;
+    --red: #b4432e;
+
+    --card-background: #ffffff;
+    --text-main: #2d2d2d;
+    --text-secondary: #555555;
+    --example-background: #e2e8f1;
+    --separator: #777777;
+    --table-border: #cccccc;
+    --label-text: #ffffff;
+    --hint-text: #444444;
+}
+
+/* =========================
+   整张卡片
+   ========================= */
+
+.card {
+    font-size: var(--card-font-size);
+    text-align: center;
+    color: var(--text-main);
+    background-color: var(--card-background);
+    line-height: 1.25;
+}
+
+.card.nightMode {
+    --card-background: #1f2328;
+    --text-main: #f0f3f6;
+    --text-secondary: #c2cad3;
+    --example-background: #2d3743;
+    --separator: #8c959f;
+    --table-border: #57606a;
+    --hint-text: #c2cad3;
+}
+
+/* =========================
+   背面统一宽度容器
+   ========================= */
+
+.back-content {
+    width: var(--content-width);
+    max-width: var(--content-max-width);
+    margin: 1.5em auto 0;
+    padding: 0;
+    box-sizing: border-box;
+
+    text-align: left;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+
+/* 背面所有主要区域统一占满容器 */
+
+.back-content .Paraphrase,
+.back-content .md,
+.back-content .En,
+.back-content .Zh,
+.back-content .sense-section,
+.back-content .extra-section {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* =========================
+   顶部分类标签
+   ========================= */
+
+.cat {
+    font-family: var(--font-latin);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 5px;
+    text-align: center;
+
+    height: 35px;
+    line-height: 35px;
+
+    padding: 1px 0 0;
+    border: 0;
+    border-radius: 30px;
+}
+
+.R {
+    color: var(--label-text);
+    background-color: var(--blue);
+}
+
+.S {
+    color: var(--label-text);
+    background-color: var(--green);
+}
+
+.D {
+    color: var(--label-text);
+    background-color: var(--red);
+}
+
+/* =========================
+   词性配色
+   ========================= */
+
+.POSR {
+    background-color: var(--blue);
+}
+
+.POSS {
+    background-color: var(--green);
+}
+
+.POSD {
+    background-color: var(--red);
+}
+
+/* 外部词性标签 */
+
+.external-pos-row {
+    margin-bottom: 0.25em;
+}
+
+.pos-label {
+    display: inline-block;
+
+    font-family: var(--font-latin);
+    font-size: 0.95em;
+    line-height: 1.15;
+    color: var(--label-text);
+
+    padding: 2px 5px 3px;
+    border-radius: 3px;
+}
+
+/*
+  兼容旧模板中使用的自定义 <h> 元素。
+  新模板已经不再使用它，但保留可避免旧字段异常。
+*/
+
+.Paraphrase h {
+    display: inline-block;
+
+    font-family: var(--font-latin);
+    font-size: 26px;
+    font-weight: 100;
+    line-height: 1.15;
+
+    height: auto;
+    color: var(--label-text);
+
+    padding: 0 3px 2px 4px;
+    border-radius: 3px;
+}
+
+/* 兼容同一笔记类型中的 SPELLING / DICTATION 旧模板。 */
+h.POSR,
+h.POSS,
+h.POSD {
+    display: inline-block;
+    height: auto;
+    padding: 0 3px 2px 4px;
+    border-radius: 3px;
+    font-family: var(--font-latin);
+    font-size: 26px;
+    font-weight: 100;
+    line-height: 1.15;
+    color: var(--label-text);
+}
+
+/* =========================
+   单词与音标
+   ========================= */
+
+.Word {
+    font-family: var(--font-latin);
+    font-size: var(--word-font-size);
+    letter-spacing: 1px;
+
+    min-height: 35px;
+    line-height: 35px;
+    color: var(--text-main);
+}
+
+.PhoneticSymbol {
+    font-family: var(--font-latin);
+    font-size: 18px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* =========================
+   释义
+   ========================= */
+
+/*
+  必须使用 block。
+
+  释义字段内部可能包含：
+  span、ul、li、hr 等元素。
+
+  因此模板里必须使用：
+  <div class="Paraphrase">
+
+  不能再使用：
+  <span class="Paraphrase">
+*/
+
+.Paraphrase {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    font-family: var(--font-chinese);
+    font-size: var(--definition-font-size);
+    line-height: 1.3;
+
+    text-align: left;
+    color: var(--text-main);
+}
+
+/* 相邻释义之间的间距 */
+
+.sense-section {
+    margin: 0;
+    padding: 0;
+}
+
+.sense-section-separated {
+    margin-top: 1.1em;
+    padding-top: 0.8em;
+    border-top: 2px solid var(--blue);
+}
+
+/* 释义内部的词性 */
+
+.Paraphrase .pos {
+    display: inline-block;
+
+    font-family: var(--font-latin);
+    line-height: 1.15;
+    color: var(--label-text);
+    background-color: var(--blue);
+
+    padding: 2px 5px 3px;
+    margin-right: 0.25em;
+    border-radius: 3px;
+}
+
+/* 释义内部正文 */
+
+.Paraphrase .tran {
+    display: inline;
+}
+
+/* 释义内部例句列表 */
+
+.Paraphrase .sents {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+
+    margin: 0.3em 0 0.8em;
+    padding: 0.3em 0.8em 0.3em 1.5em;
+
+    border-radius: 6px;
+    background-color: var(--example-background);
+}
+
+.Paraphrase .sents li {
+    margin: 0.12em 0;
+    padding-left: 0.2em;
+}
+
+/* =========================
+   例句与翻译
+   ========================= */
+
+.examples-section {
+    margin-top: 1.2em;
+}
+
+.En,
+.Zh {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    margin: 0;
+    padding: 0.5em 0.65em;
+
+    text-align: left;
+    text-indent: 0;
+
+    color: var(--text-secondary);
+    border-left: 3px solid var(--blue);
+}
+
+.En {
+    font-family: var(--font-latin);
+    font-size: var(--example-font-size);
+    line-height: 1.35;
+}
+
+.Zh {
+    font-family: var(--font-chinese);
+    font-size: var(--example-font-size);
+    line-height: 1.4;
+
+    margin-top: 0.15em;
+}
+
+/* =========================
+   Markdown 拓展内容
+   ========================= */
+
+.md {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    font-family: var(--font-chinese);
+    font-size: var(--markdown-font-size);
+    line-height: 1.45;
+
+    text-align: left;
+    color: var(--text-main);
+}
+
+/* 去掉 Markdown 首尾多余空白 */
+
+.md > :first-child,
+.En > :first-child,
+.Zh > :first-child {
+    margin-top: 0;
+}
+
+.md > :last-child,
+.En > :last-child,
+.Zh > :last-child {
+    margin-bottom: 0;
+}
+
+.md p,
+.En p,
+.Zh p {
+    max-width: 100%;
+    margin-top: 0.55em;
+    margin-bottom: 0.55em;
+}
+
+/* Markdown 标题 */
+
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+    display: block;
+    height: auto;
+
+    font-family: var(--font-chinese);
+    color: var(--text-main);
+    background: none;
+
+    padding: 0;
+    margin: 0.8em 0 0.35em;
+    line-height: 1.25;
+}
+
+.md h1 {
+    font-size: 1.75em;
+}
+
+.md h2 {
+    font-size: 1.45em;
+}
+
+.md h3 {
+    font-size: 1.25em;
+}
+
+/* Markdown 列表 */
+
+.md ul,
+.md ol {
+    box-sizing: border-box;
+    max-width: 100%;
+
+    margin-top: 0.4em;
+    margin-bottom: 0.6em;
+    padding-left: 1.6em;
+}
+
+/* Markdown 图片、SVG、表格 */
+
+.md img,
+.md svg,
+.md video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.md table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+
+    border-collapse: collapse;
+}
+
+.md th,
+.md td {
+    padding: 0.35em 0.55em;
+    border: 1px solid var(--table-border);
+}
+
+.md hr {
+    display: block;
+    width: 100%;
+    height: 2px;
+    margin: 1em 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background-color: var(--separator);
+}
+
+/* Markdown 代码 */
+
+.md pre {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+
+    overflow-x: auto;
+    white-space: pre;
+
+    margin: 0.7em 0;
+    padding: 0.8em;
+
+    border-radius: 6px;
+}
+
+.md code {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+/* =========================
+   词组与拓展分隔线
+   ========================= */
+
+.extra-section {
+    margin-top: 1.25em;
+}
+
+.section-rule {
+    display: block !important;
+    clear: both;
+
+    width: 100% !important;
+    height: 3px;
+
+    margin: 0 0 1em;
+    padding: 0;
+
+    border: 0;
+    border-radius: 3px;
+    background-color: var(--blue);
+}
+
+/* =========================
+   提示
+   ========================= */
+
+.hint {
+    font-family: var(--font-chinese);
+    text-align: left;
+    color: var(--hint-text);
+    line-height: 1.35;
+}
+
+/* =========================
+   下划线标记
+   ========================= */
+
+.back-content u {
+    display: inline;
+
+    text-decoration: none;
+    border-bottom: 2px solid var(--red);
+    padding: 0 2px;
+}
+
+/* 兼容旧模板中夹住音频按钮的横线。 */
+hr.POSR,
+hr.POSS,
+hr.POSD {
+    display: inline-block;
+    width: 40%;
+    height: 2px;
+    margin-right: 0.2em;
+    margin-left: 0.2em;
+    padding: 0;
+    vertical-align: middle;
+    border: 0;
+    border-radius: 3px;
+}
+
+/* =========================
+   Mermaid
+   ========================= */
+
+.md .mermaid {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.md .mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* =========================
+   手机与窄屏
+   ========================= */
+
+@media (max-width: 700px) {
+    :root {
+        --definition-font-size: 20px;
+        --markdown-font-size: 19px;
+        --example-font-size: 17px;
+    }
+
+    .front-content,
+    .back-content {
+        width: 100%;
+        max-width: none;
+        padding: 0 8px;
+    }
+}
+
+/* 词性 1 和释义 1 居中 */
+.sense-one .external-pos-row,
+.sense-one > .Paraphrase {
+    text-align: center !important;
+}
+
+/* 释义 1 内部的例句列表仍然左对齐 */
+.sense-one .Paraphrase .sents,
+.sense-one .Paraphrase ul,
+.sense-one .Paraphrase ol,
+.sense-one .Paraphrase li {
+    text-align: left;
+}
+
+/* 词性 2 和释义 2 保持左对齐 */
+.sense-two .external-pos-row,
+.sense-two > .Paraphrase {
+    text-align: left !important;
+}
+
+.prompt-content .external-pos-row,
+.prompt-content > .Paraphrase,
+.prompt-content .sense-section > .Paraphrase {
+    text-align: center;
+}
+
+.spelling-content .En,
+.spelling-content .Zh {
+    border-left-color: var(--green);
+}
+
+.dictation-content .En,
+.dictation-content .Zh {
+    border-left-color: var(--red);
+}
+
+.spelling-content .section-rule {
+    background-color: var(--green);
+}
+
+.dictation-content .section-rule {
+    background-color: var(--red);
+}
+
+.spelling-content .sense-section-separated {
+    border-top-color: var(--green);
+}
+
+.dictation-content .sense-section-separated {
+    border-top-color: var(--red);
+}
+
+/* =========================
+   正面
+   ========================= */
+
+.front-content {
+    width: var(--content-width);
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.front-content .cat {
+    margin: 0 0 0.8em;
+}
+
+.front-content .Word {
+    height: auto;
+    min-height: 35px;
+    line-height: 1.2;
+    margin-bottom: 0.25em;
+}
+
+.front-content .PhoneticSymbol {
+    line-height: 1.35;
+    margin-bottom: 0.8em;
+}
+
+.audio-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    width: 100%;
+}
+
+.audio-row .audio-line {
+    display: block;
+    flex: 1;
+    width: auto;
+    height: 2px;
+    margin: 0;
+    border: 0;
+    border-radius: 3px;
+    background-color: var(--blue);
+}
+
+.audio-control {
+    flex: 0 0 auto;
+    line-height: 1;
+}
