@@ -2,8 +2,6 @@
 
 一套可直接复制到 Anki 的卡片模板，支持 Markdown、代码高亮、KaTeX 数学公式、Mermaid 图表、暗色模式和代码复制。
 
-本项目从 [`qrkks/useful-scripts`](https://github.com/qrkks/useful-scripts) 独立出来，以便单独维护和发布。
-
 ## 安装
 
 打开 Anki 的 **工具 → 管理笔记类型 → 卡片...**，然后复制三个生成文件：
@@ -14,6 +12,32 @@
 4. 保存后先使用测试卡片确认显示效果。
 
 `styling.css` 是纯 CSS；JavaScript 已由构建脚本嵌入正面和背面模板，不再依赖从 Anki Styling 区执行脚本。
+
+### 自定义字段
+
+默认模板会渲染 `id="front"` 和 `id="back"` 容器。复杂卡片可以只给需要 Markdown 的字段添加 `data-markdown`。一份脚本可以处理同一面上的任意多个区域：
+
+```html
+<div class="Paraphrase" data-markdown>{{释义 1}}</div>
+<div class="Paraphrase" data-markdown>{{释义 2}}</div>
+<div class="Example" data-markdown>{{例句}}</div>
+```
+
+也可以把多个字段作为一篇连续的 Markdown 一起渲染：
+
+```html
+<div data-markdown>
+  {{释义 1}}
+
+  {{释义 2}}
+
+  {{例句}}
+</div>
+```
+
+自定义模板需要在使用 Markdown 的每一面底部放置一次 `<script>`，其中粘贴 [`src/template.js`](src/template.js) 的全部内容；不要在每个 `data-markdown` 区域中重复脚本。配套样式仍使用 [`dist/styling.css`](dist/styling.css)。
+
+没有标记的 HTML 和条件块不会被 Markdown 渲染器改写。需要保留原生交互行为的内容应放在 Markdown 区域之外，也不要嵌套 `data-markdown` 容器。
 
 ## 功能
 

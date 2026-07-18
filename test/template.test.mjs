@@ -98,3 +98,31 @@ test("runtime uses explicit resource checks and secure Mermaid defaults", async 
   assert.doesNotMatch(source, /highlightedCode\s*=\s*decodedStr/);
   assert.match(source, /highlightedCode\s*=\s*escapeHtml\(decodedStr\)/);
 });
+
+test("runtime supports legacy card containers and selective Markdown regions", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const front = {};
+  const selective = {};
+  const context = vm.createContext({
+    document: {
+      getElementById(id) {
+        return id === "front" ? front : null;
+      },
+      querySelectorAll(selector) {
+        assert.equal(selector, "[data-markdown]");
+        return [front, selective];
+      },
+    },
+    Set,
+  });
+
+  vm.runInContext(
+    `${extractFunction(source, "getMarkdownElements", "renderAll")}; this.getMarkdownElements = getMarkdownElements;`,
+    context,
+  );
+
+  const elements = context.getMarkdownElements();
+  assert.equal(elements.length, 2);
+  assert.equal(elements[0], front);
+  assert.equal(elements[1], selective);
+});

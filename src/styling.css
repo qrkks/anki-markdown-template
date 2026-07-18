@@ -1,39 +1,39 @@
 /* 全局字体设置 */
-  #front,
-  #back,
-  #front *,
-  #back * {
-    font-family: "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial,
-      sans-serif;
-  }
+#front,
+#back,
+#front *,
+#back * {
+    font-family:
+        "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial, sans-serif;
+}
 
-  /* 保持代码等宽字体 */
-  #front pre,
-  #back pre,
-  #front code,
-  #back code,
-  #front pre *,
-  #back pre *,
-  #front code *,
-  #back code * {
+/* 保持代码等宽字体 */
+#front pre,
+#back pre,
+#front code,
+#back code,
+#front pre *,
+#back pre *,
+#front code *,
+#back code * {
     font-family: "Consolas", "Monaco", "Courier New", monospace;
-  }
+}
 
-  /* 正常样式 */
-  #front,
-  #back {
+/* 正常样式 */
+#front,
+#back {
     font-size: 20px;
     color: black;
     background-color: white;
     line-height: 1.6;
-  }
-  .card {
+}
+.card {
     color: black;
     background-color: white;
-  }
+}
 
-  /* 代码块样式 */
-  pre {
+/* 代码块样式 */
+pre {
     position: relative;
     background: #f8f8f8;
     border: 1px solid #ddd;
@@ -46,8 +46,8 @@
     /* white-space: pre-wrap !important; 强制保持换行并允许自动折行 */
     /* word-wrap: break-word; 长行自动折行 */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  pre code {
+}
+pre code {
     background: transparent !important;
     padding: 0;
     border: none;
@@ -56,10 +56,10 @@
     /* white-space: pre-wrap !important; 确保代码内容保持换行 */
     /* word-wrap: break-word; 确保长行能正确折行 */
     display: block; /* 确保是块级元素 */
-  }
+}
 
-  /* 语言标识符样式 */
-  .code-lang-label {
+/* 语言标识符样式 */
+.code-lang-label {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -75,56 +75,56 @@
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
-  }
+}
 
-  .code-lang-label:hover {
+.code-lang-label:hover {
     background: #10b981;
     box-shadow: 0 2px 8px rgba(52, 211, 153, 0.3);
-  }
+}
 
-  .code-lang-label:active {
+.code-lang-label:active {
     background: #059669;
     box-shadow: 0 1px 4px rgba(52, 211, 153, 0.5);
-  }
+}
 
-  .code-lang-label.copied {
+.code-lang-label.copied {
     background: #10b981;
     animation: pulse 0.3s ease;
-  }
+}
 
-  @keyframes pulse {
+@keyframes pulse {
     0% {
-      box-shadow: 0 0 0 rgba(52, 211, 153, 0.7);
+        box-shadow: 0 0 0 rgba(52, 211, 153, 0.7);
     }
     50% {
-      box-shadow: 0 0 20px rgba(52, 211, 153, 0.7);
+        box-shadow: 0 0 20px rgba(52, 211, 153, 0.7);
     }
     100% {
-      box-shadow: 0 0 0 rgba(52, 211, 153, 0.7);
+        box-shadow: 0 0 0 rgba(52, 211, 153, 0.7);
     }
-  }
+}
 
-  /* 行内代码 */
-  code {
+/* 行内代码 */
+code {
     background: #f1f1f1;
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 0.9em;
     color: #333; /* 改为深灰色，不要红色 */
-  }
+}
 
-  /* 标签样式 */
-  .tags {
+/* 标签样式 */
+.tags {
     text-align: center;
     margin-top: 10px;
-  }
-  .tag::before {
+}
+.tag::before {
     content: "#";
-  }
-  .tag:empty {
+}
+.tag:empty {
     display: none;
-  }
-  .tag {
+}
+.tag {
     color: white;
     background-color: #9f2bff;
     border: none;
@@ -138,19 +138,19 @@
     border-radius: 14px;
     display: inline-block;
     vertical-align: middle;
-  }
+}
 
-  /* cloze 高亮 */
-  .cloze {
+/* cloze 高亮 */
+.cloze {
     font-weight: bold;
     color: blue;
-  }
-  .nightMode .cloze {
+}
+.nightMode .cloze {
     color: lightblue;
-  }
+}
 
-  /* 图片样式 */
-  img {
+/* 图片样式 */
+img {
     max-width: 100%;
     max-height: 80vh; /* 限制最大高度为视窗高度的 80% */
     height: auto;
@@ -160,96 +160,96 @@
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     object-fit: contain; /* 确保图片完整显示，保持比例 */
-  }
+}
 
-  /* 暗黑模式 */
-  .nightMode #front,
-  .nightMode #back,
-  .nightMode .card {
+/* 暗黑模式 */
+.nightMode #front,
+.nightMode #back,
+.nightMode .card {
     background-color: #1e1e1e;
     color: #e0e0e0;
-  }
-  .nightMode img {
+}
+.nightMode img {
     box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-  }
-  .nightMode .tag {
+}
+.nightMode .tag {
     background-color: #ffffff33;
     color: #ffffff;
-  }
-  .nightMode .code-lang-label {
+}
+.nightMode .code-lang-label {
     background: #4ade80;
     color: #ffffff;
-  }
+}
 
-  /* 三线表样式 */
-  table {
+/* 三线表样式 */
+table {
     border-collapse: collapse;
     width: 100%;
     margin: 12px 0;
     font-size: 18px;
-  }
-  table thead tr {
+}
+table thead tr {
     border-bottom: 2px solid #000;
-  }
-  table tbody tr:last-child {
+}
+table tbody tr:last-child {
     border-bottom: 2px solid #000;
-  }
-  table th {
+}
+table th {
     border-top: 2px solid #000;
     padding: 8px 12px;
     text-align: left;
-  }
-  table td {
+}
+table td {
     border: none;
     padding: 8px 12px;
-  }
-  .nightMode table thead tr {
+}
+.nightMode table thead tr {
     border-bottom: 2px solid #aaa;
-  }
-  .nightMode table tbody tr:last-child {
+}
+.nightMode table tbody tr:last-child {
     border-bottom: 2px solid #aaa;
-  }
-  .nightMode table th {
+}
+.nightMode table th {
     border-top: 2px solid #aaa;
-  }
+}
 
-  /* 列表样式 */
-  ul,
-  ol {
+/* 列表样式 */
+ul,
+ol {
     margin: 12px 0;
     padding-left: 24px;
     line-height: 1.6;
-  }
-  ul ul,
-  ol ol,
-  ul ol,
-  ol ul {
+}
+ul ul,
+ol ol,
+ul ol,
+ol ul {
     margin: 4px 0;
-  }
-  li {
+}
+li {
     margin: 4px 0;
-  }
-  ul > li {
+}
+ul > li {
     list-style-type: disc;
-  }
-  ul ul > li {
+}
+ul ul > li {
     list-style-type: circle;
-  }
-  ul ul ul > li {
+}
+ul ul ul > li {
     list-style-type: square;
-  }
-  ol > li {
+}
+ol > li {
     list-style-type: decimal;
-  }
-  ol ol > li {
+}
+ol ol > li {
     list-style-type: lower-alpha;
-  }
-  ol ol ol > li {
+}
+ol ol ol > li {
     list-style-type: lower-roman;
-  }
+}
 
-  /* 错误提示样式 */
-  .error-message {
+/* 错误提示样式 */
+.error-message {
     background: #ffebee;
     border: 1px solid #ffcdd2;
     border-radius: 4px;
@@ -257,15 +257,15 @@
     margin: 8px 0;
     color: #c62828;
     font-size: 14px;
-  }
-  .nightMode .error-message {
+}
+.nightMode .error-message {
     background: #3d1a1a;
     border: 1px solid #8b2635;
     color: #ff6b6b;
-  }
+}
 
-  /* Mermaid 相关样式 */
-  .mermaid {
+/* Mermaid 相关样式 */
+.mermaid {
     display: block !important;
     background-color: white;
     padding: 20px;
@@ -276,237 +276,237 @@
     width: fit-content !important;
     min-width: 100% !important;
     box-sizing: border-box !important; /* 确保 padding 不会导致溢出 */
-  }
+}
 
-  .nightMode .mermaid {
+.nightMode .mermaid {
     background-color: #2d2d2d;
     filter: invert(0.85);
-  }
+}
 
-  .mermaid svg {
+.mermaid svg {
     transform: none;
     width: auto !important;
     height: auto !important;
     max-width: 100% !important;
     display: block;
     margin: 0 auto;
-  }
+}
 
-  .mermaid .node {
+.mermaid .node {
     overflow: visible !important;
     width: auto !important;
     height: auto !important;
     margin: 8px !important; /* 增加节点间距 */
     padding: 8px !important;
-  }
+}
 
-  .mermaid .node rect,
-  .mermaid .node circle,
-  .mermaid .node ellipse,
-  .mermaid .node polygon,
-  .mermaid .node path {
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node ellipse,
+.mermaid .node polygon,
+.mermaid .node path {
     fill: #fff !important;
     stroke: #333 !important;
     stroke-width: 2px !important;
     rx: 4px !important; /* 添加圆角 */
     ry: 4px !important; /* 添加圆角 */
-  }
+}
 
-  .mermaid .node .label {
+.mermaid .node .label {
     font-size: 14px !important;
-    font-family: "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial,
-      sans-serif !important;
+    font-family:
+        "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial, sans-serif !important;
     text-align: center !important;
     padding: 8px !important; /* 增加内边距 */
     line-height: 1.4 !important; /* 调整行高 */
-  }
+}
 
-  .mermaid .nodeLabel {
+.mermaid .nodeLabel {
     /* white-space: pre-wrap !important; */
     overflow: visible !important;
     width: auto !important;
     height: auto !important;
     padding: 4px !important; /* 增加内边距 */
     line-height: 1.4 !important; /* 调整行高 */
-  }
+}
 
-  .mermaid .edgeLabel {
+.mermaid .edgeLabel {
     background-color: white !important;
     padding: 2px 4px !important;
     border-radius: 4px !important;
     font-size: 14px !important;
     overflow: visible !important;
-  }
+}
 
-  .mermaid .cluster rect {
+.mermaid .cluster rect {
     fill: #f8f9fa !important;
     stroke: #ddd !important;
     stroke-width: 1px !important;
-  }
+}
 
-  .mermaid .edgePath .path {
+.mermaid .edgePath .path {
     stroke: #333 !important;
     stroke-width: 2px !important;
-  }
+}
 
-  .mermaid .edgePath marker {
+.mermaid .edgePath marker {
     fill: #333 !important;
     stroke: none !important;
-  }
+}
 
-  .mermaid .flowchart-link {
+.mermaid .flowchart-link {
     stroke: #333 !important;
     fill: none !important;
-  }
+}
 
-  .nightMode .mermaid .node rect,
-  .nightMode .mermaid .node circle,
-  .nightMode .mermaid .node ellipse,
-  .nightMode .mermaid .node polygon,
-  .nightMode .mermaid .node path {
+.nightMode .mermaid .node rect,
+.nightMode .mermaid .node circle,
+.nightMode .mermaid .node ellipse,
+.nightMode .mermaid .node polygon,
+.nightMode .mermaid .node path {
     fill: #2d2d2d !important;
     stroke: #fff !important;
-  }
+}
 
-  .nightMode .mermaid .edgeLabel {
+.nightMode .mermaid .edgeLabel {
     background-color: #2d2d2d !important;
     color: #fff !important;
-  }
+}
 
-  .nightMode .mermaid .cluster rect {
+.nightMode .mermaid .cluster rect {
     fill: #1a1a1a !important;
     stroke: #666 !important;
-  }
+}
 
-  .nightMode .mermaid .edgePath .path {
+.nightMode .mermaid .edgePath .path {
     stroke: #fff !important;
-  }
+}
 
-  .nightMode .mermaid .edgePath marker {
+.nightMode .mermaid .edgePath marker {
     fill: #fff !important;
-  }
+}
 
-  .nightMode .mermaid .flowchart-link {
+.nightMode .mermaid .flowchart-link {
     stroke: #fff !important;
-  }
+}
 
-  /* 代码块暗黑模式样式 */
-  .nightMode .hljs {
+/* 代码块暗黑模式样式 */
+.nightMode .hljs {
     display: block;
     overflow-x: auto;
     padding: 1em;
     color: #c9d1d9;
     background: #0d1117;
-  }
+}
 
-  .nightMode pre {
+.nightMode pre {
     background: #0d1117 !important;
     border-color: #30363d !important;
     box-shadow: none;
-  }
+}
 
-  .nightMode code {
+.nightMode code {
     background: #21262d;
     color: #c9d1d9;
-  }
+}
 
-  .nightMode pre code {
+.nightMode pre code {
     background: transparent;
     color: #c9d1d9;
-  }
+}
 
-  /* 确保代码块中的注释在暗黑模式下可见 */
-  .nightMode .hljs-comment,
-  .nightMode .hljs-quote {
+/* 确保代码块中的注释在暗黑模式下可见 */
+.nightMode .hljs-comment,
+.nightMode .hljs-quote {
     color: #8b949e;
     font-style: italic;
-  }
+}
 
-  /* 暗黑模式下的字符串颜色 */
-  .nightMode .hljs-string {
+/* 暗黑模式下的字符串颜色 */
+.nightMode .hljs-string {
     color: #a5d6ff;
-  }
+}
 
-  /* 暗黑模式下的关键字颜色 */
-  .nightMode .hljs-keyword,
-  .nightMode .hljs-selector-tag,
-  .nightMode .hljs-deletion {
+/* 暗黑模式下的关键字颜色 */
+.nightMode .hljs-keyword,
+.nightMode .hljs-selector-tag,
+.nightMode .hljs-deletion {
     color: #ff7b72;
-  }
+}
 
-  /* 暗黑模式下的数字颜色 */
-  .nightMode .hljs-number,
-  .nightMode .hljs-literal {
+/* 暗黑模式下的数字颜色 */
+.nightMode .hljs-number,
+.nightMode .hljs-literal {
     color: #79c0ff;
-  }
+}
 
-  /* 暗黑模式下的函数名颜色 */
-  .nightMode .hljs-function,
-  .nightMode .hljs-title {
+/* 暗黑模式下的函数名颜色 */
+.nightMode .hljs-function,
+.nightMode .hljs-title {
     color: #d2a8ff;
-  }
+}
 
-  /* 暗黑模式下的类名颜色 */
-  .nightMode .hljs-class .hljs-title {
+/* 暗黑模式下的类名颜色 */
+.nightMode .hljs-class .hljs-title {
     color: #7ee787;
-  }
+}
 
-  /* 暗黑模式下的变量名颜色 */
-  .nightMode .hljs-variable,
-  .nightMode .hljs-template-variable {
+/* 暗黑模式下的变量名颜色 */
+.nightMode .hljs-variable,
+.nightMode .hljs-template-variable {
     color: #ffa657;
-  }
+}
 
-  /* 暗黑模式下的属性名颜色 */
-  .nightMode .hljs-attr,
-  .nightMode .hljs-property {
+/* 暗黑模式下的属性名颜色 */
+.nightMode .hljs-attr,
+.nightMode .hljs-property {
     color: #79c0ff;
-  }
+}
 
-  /* 暗黑模式下的标签颜色 */
-  .nightMode .hljs-tag,
-  .nightMode .hljs-name {
+/* 暗黑模式下的标签颜色 */
+.nightMode .hljs-tag,
+.nightMode .hljs-name {
     color: #7ee787;
-  }
+}
 
-  /* 暗黑模式下的正则表达式颜色 */
-  .nightMode .hljs-regexp {
+/* 暗黑模式下的正则表达式颜色 */
+.nightMode .hljs-regexp {
     color: #a5d6ff;
-  }
+}
 
-  /* 暗黑模式下的符号颜色 */
-  .nightMode .hljs-symbol,
-  .nightMode .hljs-bullet {
+/* 暗黑模式下的符号颜色 */
+.nightMode .hljs-symbol,
+.nightMode .hljs-bullet {
     color: #f2cc60;
-  }
+}
 
-  /* 暗黑模式下的内置函数颜色 */
-  .nightMode .hljs-built_in,
-  .nightMode .hljs-builtin-name {
+/* 暗黑模式下的内置函数颜色 */
+.nightMode .hljs-built_in,
+.nightMode .hljs-builtin-name {
     color: #ffa657;
-  }
+}
 
-  /* 暗黑模式下的元信息颜色 */
-  .nightMode .hljs-meta {
+/* 暗黑模式下的元信息颜色 */
+.nightMode .hljs-meta {
     color: #f0883e;
-  }
+}
 
-  /* 暗黑模式下的强调颜色 */
-  .nightMode .hljs-emphasis {
+/* 暗黑模式下的强调颜色 */
+.nightMode .hljs-emphasis {
     font-style: italic;
-  }
+}
 
-  /* 暗黑模式下的加粗颜色 */
-  .nightMode .hljs-strong {
+/* 暗黑模式下的加粗颜色 */
+.nightMode .hljs-strong {
     font-weight: bold;
-  }
+}
 
-  /* 确保文本不会被截断 */
-  .mermaid text {
-    font-family: "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial,
-      sans-serif !important;
+/* 确保文本不会被截断 */
+.mermaid text {
+    font-family:
+        "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial, sans-serif !important;
     font-size: 14px !important;
     fill: currentColor !important;
     text-anchor: middle !important;
     dominant-baseline: middle !important;
-  }
+}
