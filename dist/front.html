@@ -19,8 +19,8 @@
     css: [
       {
         id: "katex-css",
-        path: "_katex-0.16.22.css",
-        cdn: "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css",
+        path: "_katex-0.18.1.css",
+        cdn: "https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css",
       },
     ],
     scripts: [
@@ -38,26 +38,26 @@
       },
       {
         id: "mermaid",
-        path: "_mermaid-10.9.0.min.js",
-        cdn: "https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js",
+        path: "_mermaid-11.16.0.min.js",
+        cdn: "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js",
         isLoaded: () => typeof window.mermaid?.render === "function",
       },
       {
         id: "katex",
-        path: "_katex-0.16.22.min.js",
-        cdn: "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js",
+        path: "_katex-0.18.1.min.js",
+        cdn: "https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.js",
         isLoaded: () => typeof window.katex?.render === "function",
       },
       {
         id: "auto-render",
-        path: "_auto-render-0.16.22.js",
-        cdn: "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js",
+        path: "_auto-render-0.18.1.js",
+        cdn: "https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/contrib/auto-render.min.js",
         isLoaded: () => typeof window.renderMathInElement === "function",
       },
       {
         id: "mhchem",
-        path: "_mhchem-0.16.22.js",
-        cdn: "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/mhchem.min.js",
+        path: "_mhchem-0.18.1.js",
+        cdn: "https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/contrib/mhchem.min.js",
         isLoaded: () => Boolean(window.ankiMarkdownMhchemLoaded),
         onLoad: () => {
           window.ankiMarkdownMhchemLoaded = true;
@@ -65,8 +65,8 @@
       },
       {
         id: "markdown-it",
-        path: "_markdown-it-14.1.0.min.js",
-        cdn: "https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js",
+        path: "_markdown-it-14.3.0.min.js",
+        cdn: "https://cdn.jsdelivr.net/npm/markdown-it@14.3.0/dist/markdown-it.min.js",
         isLoaded: () => typeof window.markdownit === "function",
       },
     ],
@@ -161,6 +161,42 @@
   function cleanHTML(text) {
     if (typeof text !== "string") return "";
 
+    const normalizeLayoutDivs = (value) => {
+      const stack = [];
+      const edits = [];
+      const divTag = /<div\b[^>]*>|<\/div\s*>/gi;
+      let match;
+
+      while ((match = divTag.exec(value)) !== null) {
+        if (/^<\/div/i.test(match[0])) {
+          const opening = stack.pop();
+          if (opening?.isLayout) {
+            edits.push(
+              {start: opening.start, end: opening.end},
+              {start: match.index, end: match.index + match[0].length},
+            );
+          }
+          continue;
+        }
+
+        const attributes = match[0].slice(4, -1).trim();
+        const isLayout = /^(?:dir\s*=\s*(?:"auto"|'auto'|auto))?$/i.test(
+          attributes,
+        );
+        stack.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          isLayout,
+        });
+      }
+
+      let normalized = value;
+      for (const {start, end} of edits.sort((a, b) => b.start - a.start)) {
+        normalized = `${normalized.slice(0, start)}\n${normalized.slice(end)}`;
+      }
+      return normalized;
+    };
+
     // Code is opaque input. Protect it before interpreting any Anki HTML.
     const protectedCode = [];
     const protectCode = (value) => {
@@ -176,11 +212,7 @@
 
     // Anki commonly uses bare divs and br elements as line wrappers.
     // Divs with classes/styles remain raw HTML and are sanitized later.
-    cleaned = cleaned
-      .replace(
-        /<div(?:\s+dir=(?:["']?auto["']?))?\s*>([\s\S]*?)<\/div>/gi,
-        "\n$1\n",
-      )
+    cleaned = normalizeLayoutDivs(cleaned)
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .replace(/^(?:[ \t]*\n)+/, "")
@@ -227,10 +259,39 @@
     return cleaned;
   }
 
+  function protectMathDelimiters(text) {
+    if (typeof text !== "string") return "";
+    return text
+      .replaceAll("\\(", "@@ANKI_MD_MATH_INLINE_OPEN@@")
+      .replaceAll("\\)", "@@ANKI_MD_MATH_INLINE_CLOSE@@")
+      .replaceAll("\\[", "@@ANKI_MD_MATH_DISPLAY_OPEN@@")
+      .replaceAll("\\]", "@@ANKI_MD_MATH_DISPLAY_CLOSE@@");
+  }
+
+  function restoreMathDelimiters(text) {
+    if (typeof text !== "string") return "";
+    return text
+      .replaceAll("@@ANKI_MD_MATH_INLINE_OPEN@@", "\\(")
+      .replaceAll("@@ANKI_MD_MATH_INLINE_CLOSE@@", "\\)")
+      .replaceAll("@@ANKI_MD_MATH_DISPLAY_OPEN@@", "\\[")
+      .replaceAll("@@ANKI_MD_MATH_DISPLAY_CLOSE@@", "\\]");
+  }
+
   function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  function decodeHtmlEntities(text) {
+    if (typeof text !== "string") return "";
+    return text
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&")
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ");
   }
 
   // 🔒 安全地设置 HTML 内容（防止脚本执行）
@@ -571,7 +632,7 @@
 
         // 如果是 mermaid 图表
         if (lang === "mermaid") {
-          return `<div class="mermaid">${escapeHtml(str)}</div>`;
+          return `<div class="mermaid">${escapeHtml(decodeHtmlEntities(str))}</div>`;
         }
 
         // 🔧 智能语言检测：避免把行号当作语言名
@@ -584,13 +645,7 @@
         let highlightedCode = "";
 
         // 解码 HTML 实体
-        const decodedStr = str
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&amp;/g, "&")
-          .replace(/&#39;/g, "'")
-          .replace(/&nbsp;/g, " ");
+        const decodedStr = decodeHtmlEntities(str);
 
         if (actualLang && window.hljs) {
           try {
@@ -633,6 +688,10 @@
       },
     });
 
+    // Anki/ODH fields often contain alignment whitespace that looks like an
+    // indented code block. Require fenced code blocks instead.
+    md.block.ruler.disable(["code"]);
+
     // 重写行内代码渲染规则
     md.renderer.rules.code_inline = function (tokens, idx, options, env, slf) {
       var token = tokens[idx];
@@ -645,13 +704,7 @@
       });
 
       // 解码 HTML 实体
-      const decodedContent = token.content
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, "&")
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, " ");
+      const decodedContent = decodeHtmlEntities(token.content);
 
       debug("🔍 [DEBUG] 行内代码解码后：", {
         解码内容: decodedContent,
@@ -696,10 +749,10 @@
     };
 
     try {
-      const text = cleanHTML(original);
+      const text = protectMathDelimiters(cleanHTML(original));
       debug(`🔄 开始渲染 Markdown 内容，长度：${text.length}`);
 
-      const rendered = md.render(text);
+      const rendered = restoreMathDelimiters(md.render(text));
       debug(`✅ Markdown 渲染完成，长度：${rendered.length}`);
 
       // 🔒 使用安全的方式设置 HTML 内容
@@ -745,9 +798,9 @@
           debug(`📊 找到 ${mermaidDiagrams.length} 个 Mermaid 图表`);
 
           mermaidDiagrams.forEach(async (diagram, index) => {
+            const graphDefinition = diagram.textContent;
             try {
               debug(`\n==== 🎯 开始渲染第 ${index + 1} 个图表 ====`);
-              const graphDefinition = diagram.textContent;
 
               debug("📝 原始图表定义：", {
                 内容: graphDefinition,
@@ -947,7 +1000,9 @@
     renderMathInElement(el, {
       delimiters: [
         { left: "$$", right: "$$", display: true },
+        { left: "\\[", right: "\\]", display: true },
         { left: "$", right: "$", display: false },
+        { left: "\\(", right: "\\)", display: false },
       ],
       throwOnError: false,
     });

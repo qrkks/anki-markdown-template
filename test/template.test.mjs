@@ -8,8 +8,12 @@ import {
   TEMPLATE_NAME,
   TEMPLATE_NAMES,
   installAnki,
+  sha256,
+  syncResources,
+  transformResource,
   validateExistingModel,
 } from "../scripts/install-anki.mjs";
+import {RESOURCE_MANIFEST} from "../scripts/resource-manifest.mjs";
 
 function extractFunction(source, name, nextName) {
   const start = source.indexOf(`function ${name}(`);
@@ -164,6 +168,8 @@ test("Anki installer updates all managed templates and shared styling", async ()
 
   await installAnki({
     request,
+    resourceManifest: [],
+    managedResourcePatterns: [],
     saveBackup: async () => "mock-backup.json",
     log() {},
   });
@@ -174,6 +180,119 @@ test("Anki installer updates all managed templates and shared styling", async ()
   assert.deepEqual(Object.keys(templateUpdate.params.model.templates), TEMPLATE_NAMES);
   assert.equal(templateUpdate.params.model.templates.UNMANAGED, undefined);
   assert.ok(actions.some(({action}) => action === "updateModelStyling"));
+});
+
+test("resource manifest is pinned and KaTeX CSS uses flat Anki font paths", () => {
+  assert.equal(new Set(RESOURCE_MANIFEST.map(({filename}) => filename)).size, 30);
+  for (const resource of RESOURCE_MANIFEST) {
+    assert.match(resource.filename, /^_/);
+    assert.match(resource.url, /^https:\/\//);
+    assert.match(resource.sha256, /^[a-f0-9]{64}$/);
+  }
+
+  const resource = {
+    transform: "katex-css",
+  };
+  const source = Buffer.from(
+    '@font-face{src:url(fonts/KaTeX_Main-Regular.woff2) format("woff2"),url(fonts/KaTeX_Main-Regular.woff) format("woff"),url(fonts/KaTeX_Main-Regular.ttf) format("truetype")}',
+  );
+  const transformed = transformResource(resource, source).toString("utf8");
+  assert.match(
+    transformed,
+    /url\(_katex-0\.18\.1-font-KaTeX_Main-Regular\.woff2\)/,
+  );
+  assert.doesNotMatch(transformed, /url\(fonts\//);
+  assert.doesNotMatch(transformed, /\.woff\)|\.ttf\)/);
+});
+
+test("resource sync verifies hashes, installs missing files, and prunes only explicitly", async () => {
+  const currentData = Buffer.from("current");
+  const newData = Buffer.from("new");
+  const manifest = [
+    {
+      filename: "_test-current.js",
+      url: "https://example.test/current.js",
+      sha256: sha256(currentData),
+    },
+    {
+      filename: "_test-new.js",
+      url: "https://example.test/new.js",
+      sha256: sha256(newData),
+    },
+  ];
+  const media = new Map([["_test-current.js", currentData]]);
+  media.set("_test-old.js", Buffer.from("old"));
+  const actions = [];
+  const request = async (action, params) => {
+    actions.push({action, params});
+    if (action === "retrieveMediaFile") {
+      return media.get(params.filename)?.toString("base64") || false;
+    }
+    if (action === "getMediaFilesNames") return [...media.keys()];
+    if (action === "storeMediaFile") {
+      media.set(params.filename, Buffer.from(params.data, "base64"));
+      return params.filename;
+    }
+    if (action === "deleteMediaFile") {
+      media.delete(params.filename);
+      return params.filename;
+    }
+    return null;
+  };
+
+  const first = await syncResources({
+    request,
+    resourceManifest: manifest,
+    managedResourcePatterns: ["_test-*"],
+    downloadResource: async ({filename}) => {
+      assert.equal(filename, "_test-new.js");
+      return newData;
+    },
+    log() {},
+  });
+  assert.deepEqual(first.updated, ["_test-new.js"]);
+  assert.deepEqual(first.oldFiles, ["_test-old.js"]);
+  assert.equal(media.has("_test-old.js"), true);
+
+  const second = await syncResources({
+    request,
+    pruneResources: true,
+    resourceManifest: manifest,
+    managedResourcePatterns: ["_test-*"],
+    log() {},
+  });
+  assert.deepEqual(second.updated, []);
+  assert.deepEqual(second.deleted, ["_test-old.js"]);
+  assert.equal(media.has("_test-old.js"), false);
+  assert.ok(actions.some(({action}) => action === "deleteMediaFile"));
+});
+
+test("resource sync rejects downloaded content with the wrong hash", async () => {
+  const actions = [];
+  const request = async (action) => {
+    actions.push(action);
+    if (action === "retrieveMediaFile") return false;
+    if (action === "getMediaFilesNames") return [];
+    return null;
+  };
+
+  await assert.rejects(
+    syncResources({
+      request,
+      resourceManifest: [
+        {
+          filename: "_test.js",
+          url: "https://example.test/test.js",
+          sha256: sha256(Buffer.from("expected")),
+        },
+      ],
+      managedResourcePatterns: [],
+      downloadResource: async () => Buffer.from("tampered"),
+      log() {},
+    }),
+    /SHA-256 校验失败/,
+  );
+  assert.equal(actions.includes("storeMediaFile"), false);
 });
 
 test("cleanHTML preserves Markdown indentation and literal HTML entities", async () => {
@@ -192,6 +311,31 @@ test("cleanHTML preserves Markdown indentation and literal HTML entities", async
   assert.equal(
     context.cleanHTML("&lt;b&gt;literal&lt;/b&gt;"),
     "&lt;b&gt;literal&lt;/b&gt;",
+  );
+});
+
+test("runtime decodes arrows consistently before safe code rendering", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({});
+  vm.runInContext(
+    `${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}; this.decodeHtmlEntities = decodeHtmlEntities;`,
+    context,
+  );
+
+  assert.equal(context.decodeHtmlEntities("A --&gt; B"), "A --> B");
+  assert.equal(context.decodeHtmlEntities("x &lt; y &amp;&amp; y &gt; z"), "x < y && y > z");
+  assert.match(
+    source,
+    /escapeHtml\(decodeHtmlEntities\(str\)\)/,
+  );
+  assert.match(source, /decodedStr\s*=\s*decodeHtmlEntities\(str\)/);
+  assert.match(
+    source,
+    /decodedContent\s*=\s*decodeHtmlEntities\(token\.content\)/,
+  );
+  assert.match(
+    source,
+    /forEach\(async \(diagram, index\) => \{\s*const graphDefinition = diagram\.textContent;\s*try \{/,
   );
 });
 
@@ -259,9 +403,55 @@ test("cleanHTML normalizes only Anki layout wrappers", async () => {
 
   assert.equal(context.cleanHTML("<div>first</div><div>second</div>"), "first\n\nsecond");
   assert.equal(
+    context.cleanHTML(
+      "<div><br></div><div><div># innocence</div><div>## origin</div></div>",
+    ),
+    "# innocence\n\n## origin",
+  );
+  assert.equal(
     context.cleanHTML('<div class="callout"><strong>HTML</strong></div>'),
     '<div class="callout"><strong>HTML</strong></div>',
   );
+  assert.equal(
+    context.cleanHTML(
+      '<div class="callout"><div dir="auto">inside</div></div>',
+    ),
+    '<div class="callout">\ninside\n</div>',
+  );
+});
+
+test("runtime preserves and enables backslash math delimiters", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({});
+  vm.runInContext(
+    `${extractFunction(source, "protectMathDelimiters", "restoreMathDelimiters")}
+     ${extractFunction(source, "restoreMathDelimiters", "escapeHtml")}
+     this.protectMathDelimiters = protectMathDelimiters;
+     this.restoreMathDelimiters = restoreMathDelimiters;`,
+    context,
+  );
+
+  const input = String.raw`Inline \(x + 1\), display \[y = 2\].`;
+  const protectedText = context.protectMathDelimiters(input);
+  assert.doesNotMatch(protectedText, /\\[()[\]]/);
+  assert.equal(context.restoreMathDelimiters(protectedText), input);
+  const codeInput = "Code `\\(z\\)` and fenced code:\n```tex\n\\[z\\]\n```";
+  assert.equal(
+    context.restoreMathDelimiters(context.protectMathDelimiters(codeInput)),
+    codeInput,
+  );
+
+  assert.match(source, /left:\s*"\\\\\(",\s*right:\s*"\\\\\)"/);
+  assert.match(source, /left:\s*"\\\\\[",\s*right:\s*"\\\\\]"/);
+  assert.match(source, /protectMathDelimiters\(cleanHTML\(original\)\)/);
+  assert.match(source, /restoreMathDelimiters\(md\.render\(text\)\)/);
+});
+
+test("runtime requires fenced blocks instead of indentation for code", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  assert.match(source, /md\.block\.ruler\.disable\(\["code"\]\)/);
+  assert.match(source, /md\.renderer\.rules\.fence\s*=/);
+  assert.match(source, /md\.renderer\.rules\.code_inline\s*=/);
 });
 
 test("runtime uses explicit resource checks and secure Mermaid defaults", async () => {

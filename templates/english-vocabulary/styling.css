@@ -642,6 +642,14 @@ hr.POSD {
     margin-bottom: 0.25em;
 }
 
+/* 拼写与听写答案中的字段 HTML 也保持居中 */
+.spelling-content > .Word,
+.spelling-content > .Word *,
+.dictation-content .Word,
+.dictation-content .Word * {
+    text-align: center !important;
+}
+
 .front-content .PhoneticSymbol {
     line-height: 1.35;
     margin-bottom: 0.8em;
