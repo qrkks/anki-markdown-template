@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs",
     "install:anki": "pnpm run build && node scripts/install-anki.mjs",
     "install:anki:dry-run": "pnpm run build && node scripts/install-anki.mjs --dry-run",
+    "install:anki:prune": "pnpm run build && node scripts/install-anki.mjs --prune-resources",
     "test": "node --test",
-    "check": "pnpm run build && node --check src/template.js && pnpm test"
+    "check": "pnpm run build && node --check src/template.js && node --check scripts/install-anki.mjs && node --check scripts/resource-manifest.mjs && pnpm test"
   }
 }

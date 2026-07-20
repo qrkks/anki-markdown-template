@@ -53,7 +53,7 @@
 - Markdown 标题、列表、链接、表格和强调
 - fenced code block 与行内代码
 - highlight.js 代码高亮和点击复制
-- KaTeX 行内公式 `$...$` 与块级公式 `$$...$$`
+- KaTeX 行内公式 `$...$`、`\\(...\\)` 与块级公式 `$$...$$`、`\\[...\\]`
 - Mermaid 图表
 - Anki 暗色模式和响应式布局
 - DOMPurify HTML 清理与 Mermaid strict 安全模式
@@ -63,6 +63,7 @@
 本模板采用 **Markdown 优先、有限 HTML、代码原样保留** 的规则：
 
 - fenced code block 和行内代码中的内容不会参与 HTML 清理，`<div>`、`<script>` 等标签会作为代码文字显示。
+- 四个空格或制表符缩进不会生成代码块；需要代码块时请明确使用三个反引号围栏。
 - Anki 编辑器常用的无属性 `<div>`、`<div dir="auto">` 和 `<br>` 会转换成换行。
 - 带 `class`、`style` 等属性的 `<div>` 以及图片、表格、链接等其他 HTML 会保留，并在渲染后交给 DOMPurify 清理。
 - HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
@@ -77,14 +78,26 @@
 - `_highlight-11.11.1.js`
 - `_highlight-github-11.11.1.css`
 - `_highlight-github-dark-11.11.1.css`
-- `_katex-0.16.22.css`
-- `_katex-0.16.22.min.js`
-- `_auto-render-0.16.22.js`
-- `_mhchem-0.16.22.js`
-- `_markdown-it-14.1.0.min.js`
-- `_mermaid-10.9.0.min.js`
+- `_katex-0.18.1.css`
+- `_katex-0.18.1.min.js`
+- `_auto-render-0.18.1.js`
+- `_mhchem-0.18.1.js`
+- `_markdown-it-14.3.0.min.js`
+- `_mermaid-11.16.0.min.js`
 
-未安装本地资源时需要联网。单个可选资源加载失败只会关闭对应功能，不会阻止其他内容显示。
+`pnpm run install:anki` 会先按固定 URL 下载缺失或校验不符的资源，通过 SHA-256
+校验后写入 Anki 媒体库，再更新模板。KaTeX 使用的 20 个 WOFF2 字体也会一起安装，
+因此正常安装后可以完全离线使用。单个可选资源在本地和 CDN 都加载失败时，只会关闭
+对应功能，不会阻止其他内容显示。
+
+安装器会报告旧版受管资源，但默认保留，避免影响仍引用旧文件的其他模板。确认不再需要
+旧版本后，可显式清理：
+
+```powershell
+pnpm run install:anki:dry-run
+pnpm run install:anki
+pnpm run install:anki:prune
+```
 
 ## 开发
 

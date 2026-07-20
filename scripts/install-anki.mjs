@@ -1,6 +1,12 @@
+import {createHash} from "node:crypto";
 import {mkdir, readFile, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
+import {
+  KATEX_VERSION,
+  MANAGED_RESOURCE_PATTERNS,
+  RESOURCE_MANIFEST,
+} from "./resource-manifest.mjs";
 
 export const MODEL_NAME = "单词";
 export const TEMPLATE_NAMES = ["RECITE", "SPELLING", "DICTATION"];
@@ -34,7 +40,7 @@ export async function ankiRequest(action, params = {}) {
       method: "POST",
       headers: {"content-type": "application/json; charset=utf-8"},
       body: JSON.stringify({action, version: 6, params}),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
   } catch (error) {
     throw new Error(
@@ -49,6 +55,143 @@ export async function ankiRequest(action, params = {}) {
   const payload = await response.json();
   if (payload.error) throw new Error(`AnkiConnect ${action}: ${payload.error}`);
   return payload.result;
+}
+
+export function sha256(data) {
+  return createHash("sha256").update(data).digest("hex");
+}
+
+export function transformResource(resource, data) {
+  if (resource.transform !== "katex-css") return data;
+
+  const transformed = data
+    .toString("utf8")
+    .replace(
+      /,url\(fonts\/[^)]*\.woff\) format\("woff"\),url\(fonts\/[^)]*\.ttf\) format\("truetype"\)/g,
+      "",
+    )
+    .replace(
+      /url\(fonts\/([^)]+\.woff2)\)/g,
+      (_, name) => `url(_katex-${KATEX_VERSION}-font-${name})`,
+    );
+  if (/url\(fonts\//.test(transformed)) {
+    throw new Error("KaTeX CSS 中仍有未转换的字体路径。");
+  }
+  return Buffer.from(transformed, "utf8");
+}
+
+async function defaultDownloadResource(resource) {
+  const response = await fetch(resource.url, {
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `下载 ${resource.filename} 失败：HTTP ${response.status} ${response.statusText}`,
+    );
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function findManagedMedia(request, patterns) {
+  const files = new Set();
+  for (const pattern of patterns) {
+    const matches = await request("getMediaFilesNames", {pattern});
+    for (const filename of matches || []) files.add(filename);
+  }
+  return [...files].sort();
+}
+
+export async function syncResources({
+  request = ankiRequest,
+  dryRun = false,
+  pruneResources = false,
+  resourceManifest = RESOURCE_MANIFEST,
+  managedResourcePatterns = MANAGED_RESOURCE_PATTERNS,
+  downloadResource = defaultDownloadResource,
+  log = console.log,
+} = {}) {
+  const expectedNames = new Set(resourceManifest.map(({filename}) => filename));
+  const missing = [];
+  const mismatched = [];
+  const current = [];
+
+  for (const resource of resourceManifest) {
+    const encoded = await request("retrieveMediaFile", {
+      filename: resource.filename,
+    });
+    if (!encoded) {
+      missing.push(resource);
+      continue;
+    }
+    const actualHash = sha256(Buffer.from(encoded, "base64"));
+    if (actualHash === resource.sha256) current.push(resource);
+    else mismatched.push(resource);
+  }
+
+  const managedMedia = await findManagedMedia(request, managedResourcePatterns);
+  const oldFiles = managedMedia.filter((filename) => !expectedNames.has(filename));
+  if (oldFiles.length) {
+    log(
+      `发现 ${oldFiles.length} 个旧版受管资源，默认保留：${oldFiles.join("、")}`,
+    );
+  }
+
+  const pending = [...missing, ...mismatched];
+  if (dryRun) {
+    log(
+      `[dry-run] 资源：${current.length} 个有效，${missing.length} 个缺失，${mismatched.length} 个校验不符。`,
+    );
+    if (pruneResources && oldFiles.length) {
+      log(`[dry-run] 将删除 ${oldFiles.length} 个旧版受管资源。`);
+    }
+    return {
+      current: current.map(({filename}) => filename),
+      missing: missing.map(({filename}) => filename),
+      mismatched: mismatched.map(({filename}) => filename),
+      oldFiles,
+      updated: [],
+      deleted: [],
+    };
+  }
+
+  const updated = [];
+  for (const resource of pending) {
+    const downloaded = await downloadResource(resource);
+    const data = transformResource(resource, Buffer.from(downloaded));
+    const actualHash = sha256(data);
+    if (actualHash !== resource.sha256) {
+      throw new Error(
+        `${resource.filename} SHA-256 校验失败：期望 ${resource.sha256}，实际 ${actualHash}`,
+      );
+    }
+    const stored = await request("storeMediaFile", {
+      filename: resource.filename,
+      data: data.toString("base64"),
+    });
+    if (stored !== resource.filename) {
+      throw new Error(`Anki 未确认写入资源：${resource.filename}`);
+    }
+    updated.push(resource.filename);
+    log(`已安装资源：${resource.filename}`);
+  }
+
+  const deleted = [];
+  if (pruneResources) {
+    for (const filename of oldFiles) {
+      await request("deleteMediaFile", {filename});
+      deleted.push(filename);
+      log(`已删除旧版资源：${filename}`);
+    }
+  }
+
+  return {
+    current: current.map(({filename}) => filename),
+    missing: missing.map(({filename}) => filename),
+    mismatched: mismatched.map(({filename}) => filename),
+    oldFiles,
+    updated,
+    deleted,
+  };
 }
 
 async function loadArtifacts() {
@@ -109,6 +252,10 @@ async function defaultSaveBackup(data) {
 export async function installAnki({
   request = ankiRequest,
   dryRun = false,
+  pruneResources = false,
+  resourceManifest = RESOURCE_MANIFEST,
+  managedResourcePatterns = MANAGED_RESOURCE_PATTERNS,
+  downloadResource = defaultDownloadResource,
   saveBackup = defaultSaveBackup,
   log = console.log,
 } = {}) {
@@ -116,11 +263,21 @@ export async function installAnki({
   const version = await request("version");
   if (version < 6) throw new Error(`需要 AnkiConnect API 6，当前为 ${version}。`);
 
+  const resources = await syncResources({
+    request,
+    dryRun,
+    pruneResources,
+    resourceManifest,
+    managedResourcePatterns,
+    downloadResource,
+    log,
+  });
+
   const modelNames = await request("modelNames");
   if (!modelNames.includes(MODEL_NAME)) {
     if (dryRun) {
       log(`[dry-run] 将创建笔记类型“${MODEL_NAME}”及三套卡片模板。`);
-      return {action: "create"};
+      return {action: "create", resources};
     }
     await request("createModel", {
       modelName: MODEL_NAME,
@@ -133,7 +290,7 @@ export async function installAnki({
       isCloze: false,
     });
     log(`已创建 Anki 笔记类型“${MODEL_NAME}”及三套卡片模板。`);
-    return {action: "create"};
+    return {action: "create", resources};
   }
 
   const fields = await request("modelFieldNames", {modelName: MODEL_NAME});
@@ -150,7 +307,8 @@ export async function installAnki({
   const stylingChanged = styling.css !== artifacts.css;
   if (!templateChanged && !stylingChanged) {
     log(`Anki 笔记类型“${MODEL_NAME}”已经是最新版本。`);
-    return {action: "none"};
+    const resourcesChanged = resources.updated.length > 0 || resources.deleted.length > 0;
+    return {action: resourcesChanged ? "resources" : "none", resources};
   }
 
   if (dryRun) {
@@ -162,7 +320,7 @@ export async function installAnki({
         .filter(Boolean)
         .join("、")}。`,
     );
-    return {action: "update", templateChanged, stylingChanged};
+    return {action: "update", templateChanged, stylingChanged, resources};
   }
 
   const backup = await saveBackup({
@@ -188,14 +346,17 @@ export async function installAnki({
     });
   }
   log(`已更新 Anki；原模板备份：${backup}`);
-  return {action: "update", templateChanged, stylingChanged, backup};
+  return {action: "update", templateChanged, stylingChanged, backup, resources};
 }
 
 const isMain =
   process.argv[1] &&
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (isMain) {
-  installAnki({dryRun: process.argv.includes("--dry-run")}).catch((error) => {
+  installAnki({
+    dryRun: process.argv.includes("--dry-run"),
+    pruneResources: process.argv.includes("--prune-resources"),
+  }).catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
   });
