@@ -1,6 +1,6 @@
 {{FrontSide}}
 
-<div id="answer" class="back-content">
+<div class="back-content">
     <!-- =====================
        词性 1 与释义 1：居中
        ===================== -->
@@ -37,15 +37,15 @@
        例句与例句翻译
        ===================== -->
 
-    {{#例句}}
     <section class="extra-section examples-section">
+        {{#例句}}
         <div data-markdown class="En example-block">{{例句}}</div>
+        {{/例句}}
 
         {{#例句翻译}}
         <div data-markdown class="Zh translation-block">{{例句翻译}}</div>
         {{/例句翻译}}
     </section>
-    {{/例句}}
 
     <!-- =====================
        词组短语
