@@ -53,6 +53,7 @@ test("English vocabulary preset is built with its required fields", async () => 
   assert.match(front, /{{音标}}/);
   assert.match(front, /{{发音}}/);
   assert.match(back, /{{FrontSide}}/);
+  assert.doesNotMatch(back, /id=["']answer["']/);
   for (const field of [
     "词性 1",
     "释义 1",
@@ -69,6 +70,31 @@ test("English vocabulary preset is built with its required fields", async () => 
   assert.equal(back.match(/<script>/g)?.length, 1);
 });
 
+test("example and example translation render independently", async () => {
+  for (const name of ["recite", "spelling", "dictation"]) {
+    const back = await readFile(
+      `dist/english-vocabulary/${name}/back.html`,
+      "utf8",
+    );
+    const templateMarkup = back.split("<script>", 1)[0];
+    const exampleStart = templateMarkup.indexOf("{{#例句}}");
+    const exampleEnd = templateMarkup.indexOf("{{/例句}}");
+    const translationStart = templateMarkup.indexOf("{{#例句翻译}}");
+    const translationEnd = templateMarkup.indexOf("{{/例句翻译}}");
+
+    assert.ok(exampleStart >= 0, `${name}: missing example condition`);
+    assert.ok(exampleEnd > exampleStart, `${name}: invalid example condition`);
+    assert.ok(
+      translationStart > exampleEnd,
+      `${name}: translation must not depend on example`,
+    );
+    assert.ok(
+      translationEnd > translationStart,
+      `${name}: invalid translation condition`,
+    );
+  }
+});
+
 test("SPELLING and DICTATION use the shared card layout", async () => {
   for (const name of ["spelling", "dictation"]) {
     const [front, back] = await Promise.all([
@@ -77,7 +103,7 @@ test("SPELLING and DICTATION use the shared card layout", async () => {
     ]);
     assert.match(front, /class=["'][^"']*\bfront-content\b/);
     assert.match(front, /class=["'][^"']*\bcat\b/);
-    assert.match(back, /id=["']answer["']/);
+    assert.doesNotMatch(back, /id=["']answer["']/);
     assert.doesNotMatch(front, /<script>/);
     assert.equal(back.match(/<script>/g)?.length, 1);
     const templateMarkup = back.split("<script>", 1)[0];

@@ -297,7 +297,11 @@ h.POSD {
    例句与翻译
    ========================= */
 
-.examples-section {
+.extra-section.examples-section {
+    margin-top: 0;
+}
+
+.examples-section > :first-child {
     margin-top: 1.2em;
 }
 
