@@ -274,10 +274,10 @@
     }
 
     // Anki stores a typed Markdown quote marker as &gt;. Restore only encoded
-    // markers at the start of a Markdown line when they are followed by
-    // whitespace. Inline comparisons and protected code remain untouched.
+    // markers at the start of a Markdown line; Markdown allows the following
+    // space to be omitted. Inline comparisons and protected code stay intact.
     cleaned = cleaned.replace(
-      /^([ \t]{0,3})((?:(?:&gt;|&#62;|&#x0*3e;)[ \t]+)+)/gim,
+      /^([ \t]{0,3})((?:(?:&gt;|&#62;|&#x0*3e;)[ \t]*)+)/gim,
       (match, indentation, markers) =>
         indentation +
         markers.replace(/(?:&gt;|&#62;|&#x0*3e;)/gi, ">"),

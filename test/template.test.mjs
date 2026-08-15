@@ -358,6 +358,10 @@ test("cleanHTML preserves indentation and non-blockquote HTML entities", async (
   );
   assert.equal(context.cleanHTML("&gt; **quote**"), "> **quote**");
   assert.equal(
+    context.cleanHTML("&gt;拉丁语：e- + legere\n&gt;legere：to pick, gather"),
+    ">拉丁语：e- + legere\n>legere：to pick, gather",
+  );
+  assert.equal(
     context.cleanHTML("  &gt; &gt; nested quote"),
     "> > nested quote",
   );
