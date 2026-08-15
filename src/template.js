@@ -232,6 +232,16 @@
         .join("\n");
     }
 
+    // Anki stores a typed Markdown quote marker as &gt;. Restore only encoded
+    // markers at the start of a Markdown line when they are followed by
+    // whitespace. Inline comparisons and protected code remain untouched.
+    cleaned = cleaned.replace(
+      /^([ \t]{0,3})((?:(?:&gt;|&#62;|&#x0*3e;)[ \t]+)+)/gim,
+      (match, indentation, markers) =>
+        indentation +
+        markers.replace(/(?:&gt;|&#62;|&#x0*3e;)/gi, ">"),
+    );
+
     // Markdown tables cannot contain blank lines between adjacent rows.
     const lines = cleaned.split("\n");
     const tableRow = /^\s*\|.*\|\s*$/;

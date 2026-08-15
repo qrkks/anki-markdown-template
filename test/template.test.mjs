@@ -156,6 +156,24 @@ test("English vocabulary CSS scopes separators and supports night mode", async (
   assert.doesNotMatch(styling, /@font-face|_(?:kt|times)\.ttf/);
   assert.match(styling, /h\.POSS/);
   assert.match(styling, /hr\.POSS/);
+  assert.match(
+    styling,
+    /\.md pre\s*{[^}]*position:\s*relative;[^}]*background:\s*var\(--code-background\);[^}]*border:\s*1px solid var\(--code-border\);/s,
+  );
+  assert.match(
+    styling,
+    /\.md pre code\s*{[^}]*display:\s*block;[^}]*background:\s*transparent !important;/s,
+  );
+  assert.match(
+    styling,
+    /\.md \.code-lang-label\s*{[^}]*position:\s*absolute;[^}]*min-width:\s*44px;[^}]*background:\s*var\(--code-label-background\);/s,
+  );
+  assert.match(styling, /--code-background:\s*#0d1117;/);
+  assert.match(
+    styling,
+    /\.md blockquote,[\s\S]*?\.En blockquote,[\s\S]*?\.Zh blockquote\s*{[^}]*background:\s*var\(--blockquote-background\);[^}]*border-left:\s*4px solid var\(--blockquote-border\);/s,
+  );
+  assert.match(styling, /--blockquote-background:\s*rgba\(39, 134, 187, 0\.14\);/);
 });
 
 test("Anki installer refuses legacy field names without mutating them", () => {
@@ -321,7 +339,7 @@ test("resource sync rejects downloaded content with the wrong hash", async () =>
   assert.equal(actions.includes("storeMediaFile"), false);
 });
 
-test("cleanHTML preserves Markdown indentation and literal HTML entities", async () => {
+test("cleanHTML preserves indentation and non-blockquote HTML entities", async () => {
   const source = await readFile("src/template.js", "utf8");
   const context = vm.createContext({
     window: {},
@@ -337,6 +355,19 @@ test("cleanHTML preserves Markdown indentation and literal HTML entities", async
   assert.equal(
     context.cleanHTML("&lt;b&gt;literal&lt;/b&gt;"),
     "&lt;b&gt;literal&lt;/b&gt;",
+  );
+  assert.equal(context.cleanHTML("&gt; **quote**"), "> **quote**");
+  assert.equal(
+    context.cleanHTML("  &gt; &gt; nested quote"),
+    "> > nested quote",
+  );
+  assert.equal(
+    context.cleanHTML("comparison: a &gt; b"),
+    "comparison: a &gt; b",
+  );
+  assert.equal(
+    context.cleanHTML("```text\n&gt; code stays encoded\n```"),
+    "```text\n&gt; code stays encoded\n```",
   );
 });
 
