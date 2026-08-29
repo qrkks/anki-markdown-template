@@ -1,8 +1,6 @@
 /* 全局字体设置 */
 #front,
-#back,
-#front *,
-#back * {
+#back {
     font-family:
         "Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial, sans-serif;
 }

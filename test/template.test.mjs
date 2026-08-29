@@ -14,6 +14,14 @@ import {
   validateExistingModel,
 } from "../scripts/install-anki.mjs";
 import {RESOURCE_MANIFEST} from "../scripts/resource-manifest.mjs";
+import {
+  GENERIC_MODEL_NAME,
+  GENERIC_REQUIRED_FIELDS,
+  GENERIC_TEMPLATE_NAME,
+  installGenericAnki,
+  relaxGlobalFontSelector,
+  replaceManagedRuntime,
+} from "../scripts/install-generic-anki.mjs";
 
 function extractFunction(source, name, nextName) {
   const start = source.indexOf(`function ${name}(`);
@@ -224,6 +232,93 @@ test("Anki installer updates all managed templates and shared styling", async ()
   assert.deepEqual(Object.keys(templateUpdate.params.model.templates), TEMPLATE_NAMES);
   assert.equal(templateUpdate.params.model.templates.UNMANAGED, undefined);
   assert.ok(actions.some(({action}) => action === "updateModelStyling"));
+});
+
+test("generic installer replaces only the managed runtime and preserves card markup", async () => {
+  const previous = [
+    '<div id="front">{{Front}}</div>',
+    '<script>window.customBehavior = true;</script>',
+    '<script>const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";</script>',
+  ].join("\n");
+  const next = replaceManagedRuntime(previous, "window.currentRuntime = true;");
+
+  assert.match(next, /<div id="front">{{Front}}<\/div>/);
+  assert.match(next, /window\.customBehavior = true/);
+  assert.match(next, /window\.currentRuntime = true/);
+  assert.doesNotMatch(next, /const RESOURCE_PROMISE_KEY/);
+  assert.throws(
+    () => replaceManagedRuntime("<div>No runtime</div>", "replacement"),
+    /实际找到 0 个/,
+  );
+});
+
+test("generic installer updates Obsidian-basic and only relaxes the global font selector", async () => {
+  const actions = [];
+  const previousStyling = [
+    "/* custom */",
+    "  #front,",
+    "  #back,",
+    "  #front *,",
+    "  #back * {",
+    "    font-family: sans-serif;",
+    "  }",
+    "  .custom { color: rebeccapurple; }",
+  ].join("\n");
+  const templates = {
+    [GENERIC_TEMPLATE_NAME]: {
+      Front:
+        '<div id="front">{{Front}}</div><script>const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";</script>',
+      Back:
+        '<div id="back">{{Back}}</div><script>const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";</script>',
+    },
+  };
+  const request = async (action, params) => {
+    actions.push({action, params});
+    if (action === "version") return 6;
+    if (action === "modelNames") return [GENERIC_MODEL_NAME];
+    if (action === "modelFieldNames") return GENERIC_REQUIRED_FIELDS;
+    if (action === "modelTemplates") return templates;
+    if (action === "modelStyling") return {css: previousStyling};
+    return null;
+  };
+
+  await installGenericAnki({
+    request,
+    resourceManifest: [],
+    managedResourcePatterns: [],
+    saveBackup: async (backup) => {
+      assert.equal(backup.css, previousStyling);
+      return "mock-generic-backup.json";
+    },
+    log() {},
+  });
+
+  const update = actions.find(({action}) => action === "updateModelTemplates");
+  assert.deepEqual(Object.keys(update.params.model.templates), [
+    GENERIC_TEMPLATE_NAME,
+  ]);
+  assert.match(
+    update.params.model.templates[GENERIC_TEMPLATE_NAME].Front,
+    /_katex-0\.18\.1\.min\.js/,
+  );
+  const stylingUpdate = actions.find(
+    ({action}) => action === "updateModelStyling",
+  );
+  assert.equal(
+    stylingUpdate.params.model.css,
+    [
+      "/* custom */",
+      "  #front,",
+      "  #back {",
+      "    font-family: sans-serif;",
+      "  }",
+      "  .custom { color: rebeccapurple; }",
+    ].join("\n"),
+  );
+  assert.equal(
+    relaxGlobalFontSelector("unrelated css"),
+    "unrelated css",
+  );
 });
 
 test("resource manifest is pinned and KaTeX CSS uses flat Anki font paths", () => {
@@ -504,8 +599,80 @@ test("runtime preserves and enables backslash math delimiters", async () => {
 
   assert.match(source, /left:\s*"\\\\\(",\s*right:\s*"\\\\\)"/);
   assert.match(source, /left:\s*"\\\\\[",\s*right:\s*"\\\\\]"/);
-  assert.match(source, /protectMathDelimiters\(cleanHTML\(original\)\)/);
+  assert.match(source, /protectDisplayMathBlocks\([\s\S]*cleanHTML\(original\)/);
+  assert.match(source, /protectMathDelimiters\(protectedDisplayMath\.text\)/);
   assert.match(source, /restoreMathDelimiters\(md\.render\(text\)\)/);
+});
+
+test("runtime preserves multiline display math across Markdown rendering", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({
+    escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    },
+  });
+  vm.runInContext(
+    `${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "protectMathDelimiters")}
+     this.protectDisplayMathBlocks = protectDisplayMathBlocks;
+     this.restoreDisplayMathBlocks = restoreDisplayMathBlocks;`,
+    context,
+  );
+
+  const input = String.raw`Before
+$$
+A^\dagger = F^\mathsf{T}(F F^\mathsf{T})^{-1}
+$$
+Middle
+\[
+p=
+\begin{bmatrix}
+1\\
+1
+\end{bmatrix}
+\]
+After`;
+  const protectedMath = context.protectDisplayMathBlocks(input);
+  assert.equal(protectedMath.blocks.length, 2);
+  assert.doesNotMatch(protectedMath.text, /A\^\\dagger/);
+  assert.doesNotMatch(protectedMath.text, /\\begin\{bmatrix\}/);
+
+  const markdownHtml = `<p>${protectedMath.text}</p>`;
+  const restored = context.restoreDisplayMathBlocks(
+    markdownHtml,
+    protectedMath.blocks,
+  );
+  assert.equal(
+    restored,
+    String.raw`<p>Before
+$$
+A^\dagger = F^\mathsf{T}(F F^\mathsf{T})^{-1}
+$$
+Middle
+\[
+p=
+\begin{bmatrix}
+1\\
+1
+\end{bmatrix}
+\]
+After</p>`,
+  );
+  assert.doesNotMatch(restored, /<br>/);
+  assert.match(restored, /1\\\\\n1/);
+
+  const unsafe = context.protectDisplayMathBlocks("$$\nx < y & y > 0\n$$");
+  assert.equal(
+    context.restoreDisplayMathBlocks(unsafe.text, unsafe.blocks),
+    "$$\nx &lt; y &amp; y &gt; 0\n$$",
+  );
+  assert.match(
+    source,
+    /restoreDisplayMathBlocks\([\s\S]*protectedDisplayMath\.blocks/,
+  );
 });
 
 test("runtime requires fenced blocks instead of indentation for code", async () => {

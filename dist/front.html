@@ -269,6 +269,43 @@
     return cleaned;
   }
 
+  function protectDisplayMathBlocks(text) {
+    if (typeof text !== "string") return {text: "", blocks: []};
+
+    const blocks = [];
+    const protect = (value, pattern, wrap) =>
+      value.replace(pattern, (_, content) => {
+        const token = `@@ANKI_MD_DISPLAY_MATH_BLOCK_${blocks.length}@@`;
+        blocks.push(wrap(content));
+        return token;
+      });
+
+    let protectedText = protect(
+      text,
+      /^[ \t]*\$\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$\$[ \t]*\r?$/gm,
+      (content) => `$$\n${content}\n$$`,
+    );
+    protectedText = protect(
+      protectedText,
+      /^[ \t]*\\\[[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\\\][ \t]*\r?$/gm,
+      (content) => `\\[\n${content}\n\\]`,
+    );
+
+    return {text: protectedText, blocks};
+  }
+
+  function restoreDisplayMathBlocks(text, blocks) {
+    if (typeof text !== "string" || !Array.isArray(blocks)) return text || "";
+
+    return text.replace(
+      /@@ANKI_MD_DISPLAY_MATH_BLOCK_(\d+)@@/g,
+      (token, index) => {
+        const block = blocks[Number(index)];
+        return typeof block === "string" ? escapeHtml(block) : token;
+      },
+    );
+  }
+
   function protectMathDelimiters(text) {
     if (typeof text !== "string") return "";
     return text
@@ -759,10 +796,16 @@
     };
 
     try {
-      const text = protectMathDelimiters(cleanHTML(original));
+      const protectedDisplayMath = protectDisplayMathBlocks(
+        cleanHTML(original),
+      );
+      const text = protectMathDelimiters(protectedDisplayMath.text);
       debug(`🔄 开始渲染 Markdown 内容，长度：${text.length}`);
 
-      const rendered = restoreMathDelimiters(md.render(text));
+      const rendered = restoreDisplayMathBlocks(
+        restoreMathDelimiters(md.render(text)),
+        protectedDisplayMath.blocks,
+      );
       debug(`✅ Markdown 渲染完成，长度：${rendered.length}`);
 
       // 🔒 使用安全的方式设置 HTML 内容

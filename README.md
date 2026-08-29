@@ -99,6 +99,15 @@ pnpm run install:anki
 pnpm run install:anki:prune
 ```
 
+已有的 `Obsidian-basic / Front / Back` 卡片可以单独升级为同一套通用渲染器。该命令
+替换正反面的受管渲染器脚本，并移除会覆盖数学字体的 `#front * / #back *` 全局选择器；
+其余卡面 HTML 与 CSS 保持不变，原模板会备份到 `.anki-backups/`：
+
+```powershell
+pnpm run install:anki:obsidian-basic:dry-run
+pnpm run install:anki:obsidian-basic
+```
+
 ## 开发
 
 源文件位于 `src/`：
