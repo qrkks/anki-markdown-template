@@ -303,7 +303,12 @@
       /@@ANKI_MD_DISPLAY_MATH_BLOCK_(\d+)@@/g,
       (token, index) => {
         const block = blocks[Number(index)];
-        return typeof block === "string" ? escapeHtml(block) : token;
+        // The source comes from element.innerHTML, so Anki field characters
+        // such as matrix separators are already serialized as &amp;. Decode
+        // that serialization before escaping once for safe DOM insertion.
+        return typeof block === "string"
+          ? escapeHtml(decodeHtmlEntities(block))
+          : token;
       },
     );
   }
@@ -335,6 +340,18 @@
   function decodeHtmlEntities(text) {
     if (typeof text !== "string") return "";
     return text
+      .replace(
+        /&#(?:x([0-9a-f]+)|([0-9]+));/gi,
+        (entity, hex, decimal) => {
+          const codePoint = Number.parseInt(hex || decimal, hex ? 16 : 10);
+          return Number.isInteger(codePoint) &&
+            codePoint >= 0 &&
+            codePoint <= 0x10ffff &&
+            !(codePoint >= 0xd800 && codePoint <= 0xdfff)
+            ? String.fromCodePoint(codePoint)
+            : entity;
+        },
+      )
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')

@@ -480,6 +480,7 @@ test("runtime decodes arrows consistently before safe code rendering", async () 
 
   assert.equal(context.decodeHtmlEntities("A --&gt; B"), "A --> B");
   assert.equal(context.decodeHtmlEntities("x &lt; y &amp;&amp; y &gt; z"), "x < y && y > z");
+  assert.equal(context.decodeHtmlEntities("a&#x27; = a&#39;"), "a' = a'");
   assert.match(
     source,
     /escapeHtml\(decodeHtmlEntities\(str\)\)/,
@@ -617,8 +618,10 @@ test("runtime preserves multiline display math across Markdown rendering", async
   vm.runInContext(
     `${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
      ${extractFunction(source, "restoreDisplayMathBlocks", "protectMathDelimiters")}
+     ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}
      this.protectDisplayMathBlocks = protectDisplayMathBlocks;
-     this.restoreDisplayMathBlocks = restoreDisplayMathBlocks;`,
+     this.restoreDisplayMathBlocks = restoreDisplayMathBlocks;
+     this.decodeHtmlEntities = decodeHtmlEntities;`,
     context,
   );
 
@@ -669,6 +672,20 @@ After</p>`,
     context.restoreDisplayMathBlocks(unsafe.text, unsafe.blocks),
     "$$\nx &lt; y &amp; y &gt; 0\n$$",
   );
+
+  const serialized = context.protectDisplayMathBlocks(
+    "$$\n\\begin{bmatrix}\n1&amp;1\\\\\n1&amp;1\n\\end{bmatrix}\na&#x27; &lt; b\n$$",
+  );
+  const restoredSerialized = context.restoreDisplayMathBlocks(
+    serialized.text,
+    serialized.blocks,
+  );
+  assert.equal(
+    restoredSerialized,
+    "$$\n\\begin{bmatrix}\n1&amp;1\\\\\n1&amp;1\n\\end{bmatrix}\na' &lt; b\n$$",
+  );
+  assert.doesNotMatch(restoredSerialized, /&amp;amp;|&amp;#x27;/);
+  assert.match(context.decodeHtmlEntities(restoredSerialized), /1&1/);
   assert.match(
     source,
     /restoreDisplayMathBlocks\([\s\S]*protectedDisplayMath\.blocks/,
