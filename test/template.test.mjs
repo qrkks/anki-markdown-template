@@ -13,15 +13,24 @@ import {
   transformResource,
   validateExistingModel,
 } from "../scripts/install-anki.mjs";
+import {
+  BASIC_MODEL_ID,
+  BASIC_MODEL_NAME,
+  BASIC_REQUIRED_FIELDS,
+  BASIC_TEMPLATE_NAME,
+  installMarkdownBasic,
+  normalizeAnkiText,
+  validateBasicModel,
+} from "../scripts/install-basic-anki.mjs";
 import {RESOURCE_MANIFEST} from "../scripts/resource-manifest.mjs";
 import {
-  GENERIC_MODEL_NAME,
-  GENERIC_REQUIRED_FIELDS,
-  GENERIC_TEMPLATE_NAME,
-  installGenericAnki,
+  OBSIDIAN_MODEL_NAME,
+  OBSIDIAN_REQUIRED_FIELDS,
+  OBSIDIAN_TEMPLATE_NAME,
+  migrateObsidianBasic,
   relaxGlobalFontSelector,
   replaceManagedRuntime,
-} from "../scripts/install-generic-anki.mjs";
+} from "../scripts/migrate-obsidian-basic.mjs";
 
 function extractFunction(source, name, nextName) {
   const start = source.indexOf(`function ${name}(`);
@@ -31,22 +40,92 @@ function extractFunction(source, name, nextName) {
   return source.slice(start, end);
 }
 
-test("generated artifacts use pure CSS and executable card templates", async () => {
-  const [styling, front, back] = await Promise.all([
-    readFile("dist/styling.css", "utf8"),
-    readFile("dist/front.html", "utf8"),
-    readFile("dist/back.html", "utf8"),
-  ]);
+test("Markdown Basic is clean, scoped, and built to both public paths", async () => {
+  const [styling, front, back, publicStyling, publicFront, publicBack] =
+    await Promise.all([
+      readFile("dist/styling.css", "utf8"),
+      readFile("dist/front.html", "utf8"),
+      readFile("dist/back.html", "utf8"),
+      readFile("dist/basic/styling.css", "utf8"),
+      readFile("dist/basic/front.html", "utf8"),
+      readFile("dist/basic/back.html", "utf8"),
+    ]);
 
+  assert.equal(styling, publicStyling);
+  assert.equal(front, publicFront);
+  assert.equal(back, publicBack);
   assert.doesNotMatch(styling, /<\/?(?:style|script)>/i);
+  assert.doesNotMatch(styling, /Microsoft YaHei|微软雅黑/);
+  assert.doesNotMatch(styling, /#front\s+\*|#back\s+\*/);
+  assert.match(styling, /\.markdown-basic-content/);
+  assert.doesNotMatch(styling, /\.markdown-basic-content pre \*/);
+  assert.match(styling, /--mb-tag-background:\s*#7c3aed/);
+  assert.match(styling, /--mb-code-label-background:\s*#10b981/);
+  assert.match(styling, /\.markdown-basic-tag::before\s*{[^}]*content:\s*"#"/s);
+  assert.match(
+    styling,
+    /\.markdown-basic-content \.code-lang-label:focus-visible/,
+  );
+  assert.match(styling, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(styling, /markdown-basic-copy-pulse/);
   assert.match(front, /{{Front}}/);
-  assert.match(front, /id=["']front["']/);
+  assert.match(front, /anki-markdown-template:basic/);
+  assert.match(front, /data-markdown/);
+  assert.match(front, /{{#Tags}}[\s\S]*{{Tags}}[\s\S]*{{\/Tags}}/);
+  assert.match(front, /function enhanceBasicTags\(\)/);
+  assert.match(front, /pill\.className = "markdown-basic-tag"/);
+  assert.match(front, /langLabel\.setAttribute\("role", "button"\)/);
+  assert.match(front, /langLabel\.addEventListener\("keydown"/);
+  assert.match(
+    front,
+    /if \(lang === "mermaid"\) \{[\s\S]*?return `<div class="mermaid">/,
+  );
+  assert.doesNotMatch(front, /id=["']front["']/);
   assert.match(front, /<script>/);
   assert.match(back, /{{FrontSide}}/);
   assert.match(back, /id=["']answer["']/);
   assert.match(back, /{{Back}}/);
-  assert.match(back, /id=["']back["']/);
+  assert.match(back, /data-markdown/);
+  assert.doesNotMatch(back, /id=["']back["']/);
   assert.match(back, /<script>/);
+});
+
+test("Markdown Basic release identity is stable and unambiguous", async () => {
+  const [configText, packageText, builder, workflow] = await Promise.all([
+    readFile("config/basic-release.json", "utf8"),
+    readFile("package.json", "utf8"),
+    readFile("scripts/build-basic-apkg.py", "utf8"),
+    readFile(".github/workflows/release.yml", "utf8"),
+  ]);
+  const config = JSON.parse(configText);
+  const packageJson = JSON.parse(packageText);
+  assert.equal(config.noteTypeName, "Markdown Basic");
+  assert.equal(config.cardTemplateName, "Basic");
+  assert.equal(config.deckName, "Markdown Basic Demo");
+  assert.equal(config.artifactName, "anki-markdown-basic.apkg");
+  assert.equal(packageJson.version, "0.1.0");
+  assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
+  assert.match(
+    packageJson.scripts["install:anki:basic"],
+    /install-basic-anki\.mjs/,
+  );
+  const ids = [
+    config.modelId,
+    config.deckId,
+    config.templateId,
+    ...Object.values(config.fieldIds),
+  ];
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(ids.every((id) => Number.isSafeInteger(id) && id > 0));
+  assert.match(builder, /anki==25\.09\.4/);
+  assert.match(builder, /genanki==0\.13\.1/);
+  assert.match(builder, /Collection\(/);
+  assert.match(builder, /import_anki_package/);
+  assert.match(builder, /normalize_archive\(output, timestamp\)/);
+  assert.match(workflow, /Verify tag matches package version/);
+  assert.match(workflow, /SOURCE_DATE_EPOCH/);
+  assert.match(workflow, /pnpm run package:basic/);
+  assert.match(workflow, /gh release create/);
 });
 
 test("English vocabulary preset is built with its required fields", async () => {
@@ -234,7 +313,60 @@ test("Anki installer updates all managed templates and shared styling", async ()
   assert.ok(actions.some(({action}) => action === "updateModelStyling"));
 });
 
-test("generic installer replaces only the managed runtime and preserves card markup", async () => {
+test("Markdown Basic updater validates identity and updates only Basic", async () => {
+  assert.equal(normalizeAnkiText("line one\r\nline two"), "line one\nline two");
+  assert.throws(
+    () =>
+      validateBasicModel(
+        {[BASIC_MODEL_NAME]: BASIC_MODEL_ID + 1},
+        BASIC_REQUIRED_FIELDS,
+        {[BASIC_TEMPLATE_NAME]: {}},
+      ),
+    /为避免覆盖同名模板/,
+  );
+
+  const actions = [];
+  const templates = {
+    [BASIC_TEMPLATE_NAME]: {Front: "old front", Back: "old back"},
+    Custom: {Front: "keep", Back: "keep"},
+  };
+  const request = async (action, params) => {
+    actions.push({action, params});
+    if (action === "version") return 6;
+    if (action === "modelNamesAndIds") {
+      return {[BASIC_MODEL_NAME]: BASIC_MODEL_ID};
+    }
+    if (action === "modelFieldNames") {
+      return [...BASIC_REQUIRED_FIELDS, "Custom Field"];
+    }
+    if (action === "modelTemplates") return templates;
+    if (action === "modelStyling") return {css: "old css"};
+    return null;
+  };
+
+  await installMarkdownBasic({
+    request,
+    resourceManifest: [],
+    managedResourcePatterns: [],
+    saveBackup: async (backup) => {
+      assert.equal(backup.modelId, BASIC_MODEL_ID);
+      assert.deepEqual(backup.templates, templates);
+      return "mock-basic-backup.json";
+    },
+    log() {},
+  });
+
+  const templateUpdate = actions.find(
+    ({action}) => action === "updateModelTemplates",
+  );
+  assert.deepEqual(Object.keys(templateUpdate.params.model.templates), [
+    BASIC_TEMPLATE_NAME,
+  ]);
+  assert.equal(templateUpdate.params.model.templates.Custom, undefined);
+  assert.ok(actions.some(({action}) => action === "updateModelStyling"));
+});
+
+test("Obsidian migration replaces only the managed runtime and preserves card markup", async () => {
   const previous = [
     '<div id="front">{{Front}}</div>',
     '<script>window.customBehavior = true;</script>',
@@ -252,7 +384,7 @@ test("generic installer replaces only the managed runtime and preserves card mar
   );
 });
 
-test("generic installer updates Obsidian-basic and only relaxes the global font selector", async () => {
+test("Obsidian migration only relaxes its known global font selector", async () => {
   const actions = [];
   const previousStyling = [
     "/* custom */",
@@ -265,7 +397,7 @@ test("generic installer updates Obsidian-basic and only relaxes the global font 
     "  .custom { color: rebeccapurple; }",
   ].join("\n");
   const templates = {
-    [GENERIC_TEMPLATE_NAME]: {
+    [OBSIDIAN_TEMPLATE_NAME]: {
       Front:
         '<div id="front">{{Front}}</div><script>const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";</script>',
       Back:
@@ -275,14 +407,14 @@ test("generic installer updates Obsidian-basic and only relaxes the global font 
   const request = async (action, params) => {
     actions.push({action, params});
     if (action === "version") return 6;
-    if (action === "modelNames") return [GENERIC_MODEL_NAME];
-    if (action === "modelFieldNames") return GENERIC_REQUIRED_FIELDS;
+    if (action === "modelNames") return [OBSIDIAN_MODEL_NAME];
+    if (action === "modelFieldNames") return OBSIDIAN_REQUIRED_FIELDS;
     if (action === "modelTemplates") return templates;
     if (action === "modelStyling") return {css: previousStyling};
     return null;
   };
 
-  await installGenericAnki({
+  await migrateObsidianBasic({
     request,
     resourceManifest: [],
     managedResourcePatterns: [],
@@ -295,10 +427,10 @@ test("generic installer updates Obsidian-basic and only relaxes the global font 
 
   const update = actions.find(({action}) => action === "updateModelTemplates");
   assert.deepEqual(Object.keys(update.params.model.templates), [
-    GENERIC_TEMPLATE_NAME,
+    OBSIDIAN_TEMPLATE_NAME,
   ]);
   assert.match(
-    update.params.model.templates[GENERIC_TEMPLATE_NAME].Front,
+    update.params.model.templates[OBSIDIAN_TEMPLATE_NAME].Front,
     /_katex-0\.18\.1\.min\.js/,
   );
   const stylingUpdate = actions.find(
@@ -483,7 +615,7 @@ test("runtime decodes arrows consistently before safe code rendering", async () 
   assert.equal(context.decodeHtmlEntities("a&#x27; = a&#39;"), "a' = a'");
   assert.match(
     source,
-    /escapeHtml\(decodeHtmlEntities\(str\)\)/,
+    /return `<div class="mermaid">\$\{escapeHtml\(\s*decodeHtmlEntities\(token\.content\)/,
   );
   assert.match(source, /decodedStr\s*=\s*decodeHtmlEntities\(str\)/);
   assert.match(
@@ -603,6 +735,88 @@ test("runtime preserves and enables backslash math delimiters", async () => {
   assert.match(source, /protectDisplayMathBlocks\([\s\S]*cleanHTML\(original\)/);
   assert.match(source, /protectMathDelimiters\(protectedDisplayMath\.text\)/);
   assert.match(source, /restoreMathDelimiters\(md\.render\(text\)\)/);
+});
+
+test("code copy reports the real Anki-compatible clipboard result", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const execStart = source.indexOf("function copyWithExecCommand(");
+  const copyStart = source.indexOf("async function copyToClipboard(");
+  const copyEnd = source.indexOf("function addLanguageLabel(", copyStart);
+  assert.notEqual(execStart, -1);
+  assert.notEqual(copyStart, -1);
+  assert.notEqual(copyEnd, -1);
+  const execFunction = source.slice(execStart, copyStart);
+  const copyFunction = source.slice(copyStart, copyEnd);
+  const timers = [];
+  const classes = new Set();
+  const textArea = {
+    value: "",
+    readOnly: false,
+    style: {},
+    focus() {},
+    select() {},
+    setSelectionRange() {},
+  };
+  let execResult = true;
+  const context = vm.createContext({
+    console: {warn() {}},
+    debug() {},
+    navigator: {},
+    document: {
+      createElement() {
+        return textArea;
+      },
+      execCommand(command) {
+        assert.equal(command, "copy");
+        return execResult;
+      },
+      body: {
+        appendChild() {},
+        removeChild() {},
+      },
+    },
+    setTimeout(callback) {
+      timers.push(callback);
+    },
+  });
+  vm.runInContext(
+    `${extractFunction(source, "showCopyFeedback", "copyWithExecCommand")}
+     ${execFunction}
+     ${copyFunction}
+     this.copyToClipboard = copyToClipboard;`,
+    context,
+  );
+
+  const button = {
+    textContent: "python",
+    style: {minWidth: ""},
+    getBoundingClientRect() {
+      return {width: 52.25};
+    },
+    classList: {
+      add(name) {
+        classes.add(name);
+      },
+      remove(name) {
+        classes.delete(name);
+      },
+    },
+  };
+
+  assert.equal(await context.copyToClipboard("print('ok')", button), true);
+  assert.equal(textArea.value, "print('ok')");
+  assert.equal(button.textContent, "已复制");
+  assert.equal(button.style.minWidth, "53px");
+  assert.ok(classes.has("copied"));
+  timers.shift()();
+  assert.equal(button.textContent, "python");
+  assert.equal(button.style.minWidth, "");
+  assert.equal(classes.size, 0);
+
+  execResult = false;
+  assert.equal(await context.copyToClipboard("nope", button), false);
+  assert.equal(button.textContent, "复制失败");
+  assert.ok(classes.has("copy-failed"));
 });
 
 test("runtime preserves multiline display math across Markdown rendering", async () => {

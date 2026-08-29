@@ -7,9 +7,9 @@ import {
   RESOURCE_MANIFEST,
 } from "./resource-manifest.mjs";
 
-export const GENERIC_MODEL_NAME = "Obsidian-basic";
-export const GENERIC_TEMPLATE_NAME = "Front / Back";
-export const GENERIC_REQUIRED_FIELDS = ["Front", "Back"];
+export const OBSIDIAN_MODEL_NAME = "Obsidian-basic";
+export const OBSIDIAN_TEMPLATE_NAME = "Front / Back";
+export const OBSIDIAN_REQUIRED_FIELDS = ["Front", "Back"];
 
 export function relaxGlobalFontSelector(styling) {
   if (typeof styling !== "string") return "";
@@ -42,13 +42,13 @@ async function loadRuntime() {
 async function defaultSaveBackup(data) {
   const directory = ".anki-backups";
   const timestamp = new Date().toISOString().replaceAll(":", "-");
-  const file = path.join(directory, `${GENERIC_MODEL_NAME}-${timestamp}.json`);
+  const file = path.join(directory, `${OBSIDIAN_MODEL_NAME}-${timestamp}.json`);
   await mkdir(directory, {recursive: true});
   await writeFile(file, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   return file;
 }
 
-export async function installGenericAnki({
+export async function migrateObsidianBasic({
   request = ankiRequest,
   dryRun = false,
   resourceManifest = RESOURCE_MANIFEST,
@@ -61,28 +61,28 @@ export async function installGenericAnki({
   if (version < 6) throw new Error(`需要 AnkiConnect API 6，当前为 ${version}。`);
 
   const modelNames = await request("modelNames");
-  if (!modelNames.includes(GENERIC_MODEL_NAME)) {
-    throw new Error(`找不到笔记类型“${GENERIC_MODEL_NAME}”。`);
+  if (!modelNames.includes(OBSIDIAN_MODEL_NAME)) {
+    throw new Error(`找不到笔记类型“${OBSIDIAN_MODEL_NAME}”。`);
   }
 
   const [fields, templates, styling, runtime] = await Promise.all([
-    request("modelFieldNames", {modelName: GENERIC_MODEL_NAME}),
-    request("modelTemplates", {modelName: GENERIC_MODEL_NAME}),
-    request("modelStyling", {modelName: GENERIC_MODEL_NAME}),
+    request("modelFieldNames", {modelName: OBSIDIAN_MODEL_NAME}),
+    request("modelTemplates", {modelName: OBSIDIAN_MODEL_NAME}),
+    request("modelStyling", {modelName: OBSIDIAN_MODEL_NAME}),
     loadRuntime(),
   ]);
-  const missingFields = GENERIC_REQUIRED_FIELDS.filter(
+  const missingFields = OBSIDIAN_REQUIRED_FIELDS.filter(
     (field) => !fields.includes(field),
   );
   if (missingFields.length) {
     throw new Error(
-      `笔记类型“${GENERIC_MODEL_NAME}”缺少字段：${missingFields.join("、")}。`,
+      `笔记类型“${OBSIDIAN_MODEL_NAME}”缺少字段：${missingFields.join("、")}。`,
     );
   }
-  const current = templates[GENERIC_TEMPLATE_NAME];
+  const current = templates[OBSIDIAN_TEMPLATE_NAME];
   if (!current) {
     throw new Error(
-      `笔记类型“${GENERIC_MODEL_NAME}”缺少卡片模板“${GENERIC_TEMPLATE_NAME}”。`,
+      `笔记类型“${OBSIDIAN_MODEL_NAME}”缺少卡片模板“${OBSIDIAN_TEMPLATE_NAME}”。`,
     );
   }
 
@@ -106,7 +106,7 @@ export async function installGenericAnki({
 
   if (!templateChanged && !stylingChanged) {
     log(
-      `Anki 笔记类型“${GENERIC_MODEL_NAME}”已经使用最新通用渲染器和数学字体兼容样式。`,
+      `Anki 笔记类型“${OBSIDIAN_MODEL_NAME}”已经使用最新通用渲染器和数学字体兼容样式。`,
     );
     return {action: resources.updated.length ? "resources" : "none", resources};
   }
@@ -116,14 +116,14 @@ export async function installGenericAnki({
       stylingChanged && "数学字体兼容样式",
     ].filter(Boolean);
     log(
-      `[dry-run] 将更新“${GENERIC_MODEL_NAME} / ${GENERIC_TEMPLATE_NAME}”的${changes.join("和")}；保留其余卡面 HTML 与 CSS。`,
+      `[dry-run] 将更新“${OBSIDIAN_MODEL_NAME} / ${OBSIDIAN_TEMPLATE_NAME}”的${changes.join("和")}；保留其余卡面 HTML 与 CSS。`,
     );
     return {action: "update", templateChanged, stylingChanged, resources};
   }
 
   const backup = await saveBackup({
-    modelName: GENERIC_MODEL_NAME,
-    templateName: GENERIC_TEMPLATE_NAME,
+    modelName: OBSIDIAN_MODEL_NAME,
+    templateName: OBSIDIAN_TEMPLATE_NAME,
     fields,
     templates,
     css: styling.css,
@@ -131,18 +131,18 @@ export async function installGenericAnki({
   if (templateChanged) {
     await request("updateModelTemplates", {
       model: {
-        name: GENERIC_MODEL_NAME,
-        templates: {[GENERIC_TEMPLATE_NAME]: expected},
+        name: OBSIDIAN_MODEL_NAME,
+        templates: {[OBSIDIAN_TEMPLATE_NAME]: expected},
       },
     });
   }
   if (stylingChanged) {
     await request("updateModelStyling", {
-      model: {name: GENERIC_MODEL_NAME, css: expectedStyling},
+      model: {name: OBSIDIAN_MODEL_NAME, css: expectedStyling},
     });
   }
   log(
-    `已更新“${GENERIC_MODEL_NAME} / ${GENERIC_TEMPLATE_NAME}”通用渲染器和数学字体兼容样式；原模板备份：${backup}`,
+    `已更新“${OBSIDIAN_MODEL_NAME} / ${OBSIDIAN_TEMPLATE_NAME}”通用渲染器和数学字体兼容样式；原模板备份：${backup}`,
   );
   return {action: "update", templateChanged, stylingChanged, backup, resources};
 }
@@ -151,7 +151,7 @@ const isMain =
   process.argv[1] &&
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
 if (isMain) {
-  installGenericAnki({
+  migrateObsidianBasic({
     dryRun: process.argv.includes("--dry-run"),
   }).catch((error) => {
     console.error(error.message);

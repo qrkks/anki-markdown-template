@@ -2,20 +2,35 @@
 
 一套可直接复制到 Anki 的卡片模板，支持 Markdown、代码高亮、KaTeX 数学公式、Mermaid 图表、暗色模式和代码复制。
 
-## 安装
+## 安装 Markdown Basic
+
+普通用户从 [GitHub Releases](https://github.com/qrkks/anki-markdown-template/releases)
+下载 `anki-markdown-basic.apkg`，然后在 Anki 中选择 **文件 → 导入**。安装包会创建：
+
+- 笔记类型 `Markdown Basic`
+- 字段 `Front`、`Back`
+- 卡片模板 `Basic`
+- 含一张可删除示例卡片的牌组 `Markdown Basic Demo`
+- Markdown、KaTeX、代码高亮和 Mermaid 所需的本地媒体资源
+
+安装包不修改 Anki 内置 `Basic`，也不依赖 `Obsidian-basic`。
+
+### 手动安装
 
 打开 Anki 的 **工具 → 管理笔记类型 → 卡片...**，然后复制三个生成文件：
 
-1. 将 [`dist/front.html`](dist/front.html) 的全部内容复制到 **正面模板**。
-2. 将 [`dist/back.html`](dist/back.html) 的全部内容复制到 **背面模板**。
-3. 将 [`dist/styling.css`](dist/styling.css) 的全部内容复制到 **样式**。
+1. 将 [`dist/basic/front.html`](dist/basic/front.html) 的全部内容复制到 **正面模板**。
+2. 将 [`dist/basic/back.html`](dist/basic/back.html) 的全部内容复制到 **背面模板**。
+3. 将 [`dist/basic/styling.css`](dist/basic/styling.css) 的全部内容复制到 **样式**。
 4. 保存后先使用测试卡片确认显示效果。
 
 `styling.css` 是纯 CSS；JavaScript 已由构建脚本嵌入正面和背面模板，不再依赖从 Anki Styling 区执行脚本。
 
 ### 自定义字段
 
-默认模板会渲染 `id="front"` 和 `id="back"` 容器。复杂卡片可以只给需要 Markdown 的字段添加 `data-markdown`。一份脚本可以处理同一面上的任意多个区域：
+公开模板使用 `data-markdown` 标记需要渲染的区域；渲染器仍兼容旧模板的
+`id="front"` 和 `id="back"` 容器。复杂卡片可以只给需要 Markdown 的字段添加
+`data-markdown`。一份脚本可以处理同一面上的任意多个区域：
 
 ```html
 <div class="Paraphrase" data-markdown>{{释义 1}}</div>
@@ -43,7 +58,8 @@
 
 仓库目前包含两套模板：
 
-- `dist/front.html`、`dist/back.html` 和 `dist/styling.css`：基础模板。
+- [`templates/basic`](templates/basic)：公开的 `Markdown Basic` 正反面模板；生成到
+  `dist/basic`，同时保留根目录 `dist/front.html` 等兼容路径。
 - [`templates/english-vocabulary`](templates/english-vocabulary)：英语词汇模板；所需字段和安装方法见目录内说明。
 
 两套模板共用 `src/template.js` 中的 Markdown 渲染核心。运行 `pnpm run build` 会同时生成它们，不需要在每套模板中手动复制脚本。
@@ -99,22 +115,25 @@ pnpm run install:anki
 pnpm run install:anki:prune
 ```
 
-已有的 `Obsidian-basic / Front / Back` 卡片可以单独升级为同一套通用渲染器。该命令
+### 迁移本地 Obsidian-basic
+
+这是已有本地模板的兼容迁移工具，不属于公开的 `Markdown Basic` 安装流程。已有的
+`Obsidian-basic / Front / Back` 卡片可以单独升级为同一套通用渲染器。该命令
 替换正反面的受管渲染器脚本，并移除会覆盖数学字体的 `#front * / #back *` 全局选择器；
 其余卡面 HTML 与 CSS 保持不变，原模板会备份到 `.anki-backups/`：
 
 ```powershell
-pnpm run install:anki:obsidian-basic:dry-run
-pnpm run install:anki:obsidian-basic
+pnpm run migrate:anki:obsidian-basic:dry-run
+pnpm run migrate:anki:obsidian-basic
 ```
 
 ## 开发
 
-源文件位于 `src/`：
+共享渲染核心和模板源文件分别位于：
 
-- `src/front.html`、`src/back.html`：模板结构
-- `src/styling.css`：纯 CSS
 - `src/template.js`：渲染逻辑
+- `templates/basic`：`Markdown Basic` 模板结构和纯 CSS
+- `templates/english-vocabulary`：英语词汇模板
 
 `dist/` 中的 `front.html`、`back.html` 和 `styling.css` 是生成文件，请不要直接修改。
 
@@ -125,6 +144,37 @@ pnpm run check
 ```
 
 `pnpm run check` 会重新生成模板、检查 JavaScript 语法并运行回归测试。
+
+### 构建 APKG
+
+安装 [uv](https://docs.astral.sh/uv/) 后运行：
+
+```powershell
+pnpm run package:basic
+```
+
+命令会下载并校验 30 个固定版本资源，生成
+`release/anki-markdown-basic.apkg` 和 `release/SHA256SUMS.txt`，再用固定版本的
+Anki 25.09.4 官方 Python 库导入到隔离的临时 collection，核对模型、字段、模板 ID、CSS、示例笔记和全部
+媒体哈希。它不会访问或修改用户的 Anki profile。
+
+Tag `vX.Y.Z` 会触发 GitHub Actions；只有 tag 与 `package.json` 版本一致、完整检查和
+APKG 隔离导入验证均通过时，工作流才会创建 GitHub Release。完整流程和回滚说明见
+[`docs/releasing.md`](docs/releasing.md)。
+
+### 本地更新 Markdown Basic
+
+APKG 用于公开发布和首次安装。开发时修改模板、CSS 或共享渲染器后，可以通过
+AnkiConnect 只更新本机已安装的 `Markdown Basic / Basic`：
+
+```powershell
+pnpm run install:anki:basic:dry-run
+pnpm run install:anki:basic
+```
+
+该命令要求先通过 APKG 安装具有受管模型 ID 的 `Markdown Basic`。它会校验笔记类型、
+同步固定版本资源、备份原模板，然后只更新 `Basic` 正反面和 CSS；不会修改字段、笔记、
+卡片、牌组或学习记录。对外发布仍以 `anki-markdown-basic.apkg` 为唯一安装文件。
 
 ## 许可证
 

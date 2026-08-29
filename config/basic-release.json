@@ -1,0 +1,14 @@
+{
+  "noteTypeName": "Markdown Basic",
+  "cardTemplateName": "Basic",
+  "deckName": "Markdown Basic Demo",
+  "artifactName": "anki-markdown-basic.apkg",
+  "modelId": 1437300337,
+  "deckId": 1486345395,
+  "fieldIds": {
+    "Front": 1665131613,
+    "Back": 1475095117
+  },
+  "templateId": 1555528734,
+  "guidSeed": "qrkks/anki-markdown-template:markdown-basic-demo"
+}

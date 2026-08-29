@@ -4,8 +4,13 @@ import path from "node:path";
 const script = await readFile("src/template.js", "utf8");
 const templates = [
   {
-    sourceDir: "src",
+    sourceDir: "templates/basic",
     outputDir: "dist",
+    cards: [{directory: "", runtimeSides: ["front", "back"]}],
+  },
+  {
+    sourceDir: "templates/basic",
+    outputDir: "dist/basic",
     cards: [{directory: "", runtimeSides: ["front", "back"]}],
   },
   {

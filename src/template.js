@@ -531,53 +531,74 @@
     });
   }
 
-  // 复制到剪贴板函数
-  async function copyToClipboard(text, button) {
+  function showCopyFeedback(button, copied) {
     const originalText = button.textContent;
+    const stateClass = copied ? "copied" : "copy-failed";
+    const originalMinWidth = button.style.minWidth;
+    const renderedWidth = button.getBoundingClientRect?.().width || 0;
+
+    // 反馈文字长度不同，先锁定当前宽度，避免按钮轮廓跳动。
+    if (renderedWidth > 0) {
+      button.style.minWidth = `${Math.ceil(renderedWidth)}px`;
+    }
+
+    button.classList.add(stateClass);
+    button.textContent = copied ? "已复制" : "复制失败";
+
+    setTimeout(() => {
+      button.classList.remove(stateClass);
+      button.textContent = originalText;
+      button.style.minWidth = originalMinWidth;
+    }, 1000);
+  }
+
+  function copyWithExecCommand(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.readOnly = true;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
 
     try {
-      await navigator.clipboard.writeText(text);
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange?.(0, textArea.value.length);
+      return document.execCommand("copy") === true;
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
 
-      // 视觉反馈
-      button.classList.add("copied");
-      button.textContent = "已复制";
+  // 复制到剪贴板函数。Anki WebView 需要在点击事件尚未结束时复制，
+  // 因此先同步尝试 execCommand，再回退到现代 Clipboard API。
+  async function copyToClipboard(text, button) {
+    let copied = false;
 
-      setTimeout(() => {
-        button.classList.remove("copied");
-        button.textContent = originalText;
-      }, 1000);
+    try {
+      copied = copyWithExecCommand(text);
+    } catch (error) {
+      debug("📋 Anki 兼容复制不可用：", error);
+    }
 
-      debug("📋 代码已复制到剪贴板");
-    } catch (err) {
-      // 备用方案：使用旧的 execCommand
+    if (!copied && navigator.clipboard?.writeText) {
       try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.opacity = "0";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-
-        // 同样的视觉反馈
-        button.classList.add("copied");
-        button.textContent = "已复制";
-
-        setTimeout(() => {
-          button.classList.remove("copied");
-          button.textContent = originalText;
-        }, 1000);
-
-        debug("📋 代码已复制到剪贴板 (fallback)");
-      } catch (fallbackErr) {
-        console.warn("❌ 复制失败：", fallbackErr);
-        button.textContent = "复制失败";
-        setTimeout(() => {
-          button.textContent = originalText;
-        }, 1000);
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (error) {
+        debug("📋 Clipboard API 复制不可用：", error);
       }
     }
+
+    showCopyFeedback(button, copied);
+    if (copied) {
+      debug("📋 代码已复制到剪贴板");
+    } else {
+      console.warn("❌ 复制失败：当前 WebView 未授权剪贴板写入");
+    }
+    return copied;
   }
 
   // 添加语言标识符函数
@@ -599,12 +620,11 @@
     langLabel.className = "code-lang-label";
     langLabel.textContent = language;
     langLabel.title = "点击复制代码";
+    langLabel.setAttribute("role", "button");
+    langLabel.setAttribute("aria-label", `复制 ${language} 代码`);
+    langLabel.tabIndex = 0;
 
-    // 添加点击复制功能
-    langLabel.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
+    const copyCode = async () => {
       // 获取代码块内容
       const codeElement = preElement.querySelector("code");
       if (codeElement) {
@@ -629,6 +649,19 @@
 
         await copyToClipboard(decodedText, langLabel);
       }
+    };
+
+    // 添加鼠标和键盘复制功能
+    langLabel.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await copyCode();
+    });
+    langLabel.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      await copyCode();
     });
 
     // 直接添加到 pre 元素
@@ -656,6 +689,28 @@
           (tempDiv.textContent.length > 100 ? "..." : ""),
       );
     }
+  }
+
+  function enhanceBasicTags() {
+    document.querySelectorAll(".markdown-basic-tags").forEach((container) => {
+      if (container.dataset.enhanced === "true") return;
+
+      const tags = (container.textContent || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      container.textContent = "";
+      container.setAttribute("role", "list");
+      tags.forEach((tag) => {
+        const pill = document.createElement("span");
+        pill.className = "markdown-basic-tag";
+        pill.setAttribute("role", "listitem");
+        pill.textContent = tag;
+        container.appendChild(pill);
+      });
+      container.dataset.enhanced = "true";
+    });
   }
 
   function renderMarkdown(element) {
@@ -687,11 +742,6 @@
           "原始内容：",
           str.substring(0, 50),
         );
-
-        // 如果是 mermaid 图表
-        if (lang === "mermaid") {
-          return `<div class="mermaid">${escapeHtml(decodeHtmlEntities(str))}</div>`;
-        }
 
         // 🔧 智能语言检测：避免把行号当作语言名
         let actualLang = lang;
@@ -794,6 +844,13 @@
       const lang = info ? info.split(/\s+/g)[0] : "";
       const safeLang = lang.replace(/[^\w-]/g, "");
 
+      // Mermaid 是图表容器，不应继承普通代码块的字体和布局。
+      if (lang === "mermaid") {
+        return `<div class="mermaid">${escapeHtml(
+          decodeHtmlEntities(token.content),
+        )}</div>`;
+      }
+
       // 直接使用 token 的内容进行高亮，因为 cleanHTML 已经处理过转义
       const highlighted = options.highlight(token.content, lang, "");
 
@@ -853,7 +910,7 @@
               fontSize: "16px",
               nodePadding: 25, // 增加节点内边距
               fontFamily:
-                '"Microsoft YaHei", "微软雅黑", "Helvetica Neue", Arial, sans-serif',
+                'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             },
           });
           debug("✅ Mermaid 初始化成功");
@@ -1122,6 +1179,7 @@
 
   async function init() {
     try {
+      enhanceBasicTags();
       updateHighlightTheme();
 
       // Anki 的 WebView 会跨卡片复用；资源只加载一次，当前卡片始终重新渲染。

@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+      - name: Install build tools
+        run: |
+          pnpm install --frozen-lockfile
+          python -m pip install --disable-pip-version-check uv==0.11.24
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          expected="v$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          test "$GITHUB_REF_NAME" = "$expected"
+      - run: pnpm run check
+      - name: Build and verify Markdown Basic APKG
+        shell: bash
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          pnpm run package:basic
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            release/anki-markdown-basic.apkg \
+            release/SHA256SUMS.txt \
+            --verify-tag \
+            --generate-notes \
+            --title "Anki Markdown Template $GITHUB_REF_NAME"
