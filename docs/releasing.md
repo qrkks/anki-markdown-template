@@ -34,9 +34,9 @@ produces the same package checksum.
 Push `main`, create the matching tag, and push the tag:
 
 ```powershell
-git tag v0.1.0
+git tag v0.1.1
 git push origin main
-git push origin v0.1.0
+git push origin v0.1.1
 ```
 
 `.github/workflows/release.yml` rejects a tag that differs from the version in
@@ -46,8 +46,8 @@ Release and attaches the APKG and checksum file.
 Verify the published artifact independently:
 
 ```powershell
-gh release view v0.1.0
-gh release download v0.1.0 --pattern "anki-markdown-basic.apkg" --pattern "SHA256SUMS.txt"
+gh release view v0.1.1
+gh release download v0.1.1 --pattern "anki-markdown-basic.apkg" --pattern "SHA256SUMS.txt"
 Get-FileHash -Algorithm SHA256 .\anki-markdown-basic.apkg
 ```
 

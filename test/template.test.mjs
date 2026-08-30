@@ -103,7 +103,7 @@ test("Markdown Basic release identity is stable and unambiguous", async () => {
   assert.equal(config.cardTemplateName, "Basic");
   assert.equal(config.deckName, "Markdown Basic Demo");
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
-  assert.equal(packageJson.version, "0.1.0");
+  assert.equal(packageJson.version, "0.1.1");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
   assert.match(
     packageJson.scripts["install:anki:basic"],
