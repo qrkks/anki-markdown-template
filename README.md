@@ -13,7 +13,7 @@
 - 含一张可删除示例卡片的牌组 `Markdown Basic Demo`
 - Markdown、KaTeX、代码高亮和 Mermaid 所需的本地媒体资源
 
-安装包不修改 Anki 内置 `Basic`，也不依赖 `Obsidian-basic`。
+安装包不修改 Anki 内置 `Basic`。
 
 ### 手动安装
 
