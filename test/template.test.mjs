@@ -881,6 +881,24 @@ After</p>`,
   assert.doesNotMatch(restored, /<br>/);
   assert.match(restored, /1\\\\\n1/);
 
+  const embeddedInput = String.raw`同时，\[
+p = Pb = \dfrac{aa^T}{a^Ta}b
+\]，
+然后继续。`;
+  const embedded = context.protectDisplayMathBlocks(embeddedInput);
+  assert.equal(embedded.blocks.length, 1);
+  assert.equal(
+    embedded.text,
+    "同时，@@ANKI_MD_DISPLAY_MATH_BLOCK_0@@，\n然后继续。",
+  );
+  assert.equal(
+    context.restoreDisplayMathBlocks(`<p>${embedded.text}</p>`, embedded.blocks),
+    String.raw`<p>同时，\[
+p = Pb = \dfrac{aa^T}{a^Ta}b
+\]，
+然后继续。</p>`,
+  );
+
   const unsafe = context.protectDisplayMathBlocks("$$\nx < y & y > 0\n$$");
   assert.equal(
     context.restoreDisplayMathBlocks(unsafe.text, unsafe.blocks),
@@ -952,4 +970,42 @@ test("runtime supports legacy card containers and selective Markdown regions", a
   assert.equal(elements.length, 2);
   assert.equal(elements[0], front);
   assert.equal(elements[1], selective);
+});
+
+test("runtime snapshots Markdown before asynchronous resource loading", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const captureFunction = extractFunction(
+    source,
+    "captureMarkdownSources",
+    "renderAll",
+  );
+  const element = {innerHTML: String.raw`\[x=1\]`};
+  const context = vm.createContext({element});
+
+  vm.runInContext(
+    `const originalMarkdownSources = new WeakMap();
+     function getMarkdownElements() { return [element]; }
+     ${captureFunction}
+     this.captureMarkdownSources = captureMarkdownSources;
+     this.getCapturedSource = (value) => originalMarkdownSources.get(value);`,
+    context,
+  );
+
+  context.captureMarkdownSources();
+  element.innerHTML = "<mjx-container>already typeset</mjx-container>";
+  context.captureMarkdownSources();
+  assert.equal(context.getCapturedSource(element), String.raw`\[x=1\]`);
+
+  assert.match(
+    source,
+    /const original\s*=\s*originalMarkdownSources\.get\(el\)\s*\?\?\s*el\.innerHTML/,
+  );
+  assert.match(
+    source,
+    /async function init\(\)[\s\S]*?captureMarkdownSources\(\);[\s\S]*?await window\[RESOURCE_PROMISE_KEY\]/,
+  );
+  assert.match(
+    source,
+    /captureMarkdownSources\(\);\s*\n\s*if \(document\.readyState === "loading"\)/,
+  );
 });

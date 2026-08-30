@@ -4,6 +4,7 @@
   const DEBUG = false;
   const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";
   const THEME_LINK_ID = "anki-markdown-highlight-theme";
+  const originalMarkdownSources = new WeakMap();
 
   function debug(...args) {
     if (DEBUG) console.debug(...args);
@@ -276,12 +277,12 @@
 
     let protectedText = protect(
       text,
-      /^[ \t]*\$\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$\$[ \t]*\r?$/gm,
+      /\$\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$\$/g,
       (content) => `$$\n${content}\n$$`,
     );
     protectedText = protect(
       protectedText,
-      /^[ \t]*\\\[[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\\\][ \t]*\r?$/gm,
+      /\\\[[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\\\]/g,
       (content) => `\\[\n${content}\n\\]`,
     );
 
@@ -724,8 +725,10 @@
       return;
     }
 
-    // 获取原始内容
-    const original = el.innerHTML;
+    // Anki's built-in MathJax can rewrite \(...\) and \[...\] while the
+    // shared resources are still loading. Always render from the source
+    // captured before that asynchronous wait, not from the mutated DOM.
+    const original = originalMarkdownSources.get(el) ?? el.innerHTML;
 
     // 创建安全的 markdown-it 实例
     const md = window.markdownit({
@@ -1143,6 +1146,14 @@
     );
   }
 
+  function captureMarkdownSources() {
+    getMarkdownElements().forEach((element) => {
+      if (!originalMarkdownSources.has(element)) {
+        originalMarkdownSources.set(element, element.innerHTML);
+      }
+    });
+  }
+
   function renderAll() {
     debug("🎯 开始渲染所有元素");
     getMarkdownElements().forEach((element) => {
@@ -1179,6 +1190,9 @@
 
   async function init() {
     try {
+      // Capture again for elements parsed after an earlier FrontSide script.
+      // Existing snapshots are intentionally never replaced.
+      captureMarkdownSources();
       enhanceBasicTags();
       updateHighlightTheme();
 
@@ -1299,6 +1313,10 @@
       console.error("❌ Initialization failed:", e);
     }
   }
+
+  // The runtime is appended after the managed card content, so capture it
+  // synchronously before Anki's MathJax or any resource await can mutate it.
+  captureMarkdownSources();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init, { once: true });
