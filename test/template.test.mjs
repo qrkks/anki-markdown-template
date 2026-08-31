@@ -31,6 +31,11 @@ import {
   relaxGlobalFontSelector,
   replaceManagedRuntime,
 } from "../scripts/migrate-obsidian-basic.mjs";
+import {
+  describeSyncResult,
+  EXCLUDED_LEGACY_MODELS,
+  syncManagedAnki,
+} from "../scripts/sync-anki.mjs";
 
 function extractFunction(source, name, nextName) {
   const start = source.indexOf(`function ${name}(`);
@@ -566,6 +571,126 @@ test("resource sync rejects downloaded content with the wrong hash", async () =>
   assert.equal(actions.includes("storeMediaFile"), false);
 });
 
+test("resource sync can be skipped by the unified installer", async () => {
+  const result = await syncResources({
+    request() {
+      throw new Error("resource request should not run");
+    },
+    resourceManifest: [],
+    managedResourcePatterns: [],
+    log() {
+      throw new Error("resource log should not run");
+    },
+  });
+
+  assert.deepEqual(result, {
+    current: [],
+    missing: [],
+    mismatched: [],
+    oldFiles: [],
+    updated: [],
+    deleted: [],
+  });
+});
+
+test("managed Anki sync preflights all targets before writing and verifies", async () => {
+  const calls = [];
+  const attempts = new Map();
+  const targets = ["单词", "Markdown Basic", "Obsidian-basic"].map((name) => ({
+    name,
+    async install({dryRun, resourceManifest}) {
+      const attempt = (attempts.get(name) || 0) + 1;
+      attempts.set(name, attempt);
+      calls.push({name, dryRun, checksResources: resourceManifest === undefined});
+      return {
+        action: dryRun && attempt === 1 ? "update" : dryRun ? "none" : "update",
+        resources: {missing: [], mismatched: [], updated: []},
+      };
+    },
+  }));
+
+  const result = await syncManagedAnki({targets, log() {}});
+
+  assert.equal(result.mode, "sync");
+  assert.deepEqual(
+    calls.map(({name, dryRun}) => `${name}:${dryRun}`),
+    [
+      "单词:true",
+      "Markdown Basic:true",
+      "Obsidian-basic:true",
+      "单词:false",
+      "Markdown Basic:false",
+      "Obsidian-basic:false",
+      "单词:true",
+      "Markdown Basic:true",
+      "Obsidian-basic:true",
+    ],
+  );
+  assert.deepEqual(
+    calls.map(({checksResources}) => checksResources),
+    [true, false, false, false, false, false, false, false, false],
+  );
+});
+
+test("managed Anki dry-run never writes and reports excluded legacy models", async () => {
+  const calls = [];
+  const targets = ["单词", "Markdown Basic", "Obsidian-basic"].map((name) => ({
+    name,
+    async install({dryRun}) {
+      calls.push({name, dryRun});
+      assert.equal(dryRun, true);
+      return {
+        action: "none",
+        resources: {missing: [], mismatched: [], updated: []},
+      };
+    },
+  }));
+
+  const result = await syncManagedAnki({dryRun: true, targets, log() {}});
+
+  assert.equal(result.mode, "dry-run");
+  assert.equal(calls.length, 3);
+  assert.deepEqual(EXCLUDED_LEGACY_MODELS, [
+    "KaTeX and Markdown Basic",
+    "KaTeX and Markdown Cloze",
+  ]);
+  assert.equal(
+    describeSyncResult("单词", {
+      action: "update",
+      resources: {missing: ["resource"], mismatched: []},
+    }),
+    "单词：将更新，1 个资源需要同步",
+  );
+});
+
+test("managed Anki sync aborts before writes when preflight fails", async () => {
+  let writes = 0;
+  const targets = [
+    {
+      name: "单词",
+      async install({dryRun}) {
+        if (!dryRun) writes += 1;
+        return {
+          action: "none",
+          resources: {missing: [], mismatched: [], updated: []},
+        };
+      },
+    },
+    {
+      name: "Markdown Basic",
+      async install() {
+        throw new Error("invalid managed model");
+      },
+    },
+  ];
+
+  await assert.rejects(
+    syncManagedAnki({targets, log() {}}),
+    /invalid managed model/,
+  );
+  assert.equal(writes, 0);
+});
+
 test("cleanHTML preserves indentation and non-blockquote HTML entities", async () => {
   const source = await readFile("src/template.js", "utf8");
   const context = vm.createContext({
@@ -706,6 +831,34 @@ test("cleanHTML normalizes only Anki layout wrappers", async () => {
       '<div class="callout"><div dir="auto">inside</div></div>',
     ),
     '<div class="callout">\ninside\n</div>',
+  );
+});
+
+test("cleanHTML restores headings typed in Anki rich-text paragraphs", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({
+    window: {},
+    debug() {},
+    console: {log() {}, warn() {}, error() {}},
+  });
+  vm.runInContext(
+    `${extractFunction(source, "cleanHTML", "escapeHtml")}; this.cleanHTML = cleanHTML;`,
+    context,
+  );
+
+  assert.equal(
+    context.cleanHTML(
+      "<p><br></p><p>#&nbsp;orthogonal 按词源来说 直角的？</p><p><br></p><div>对，词源上基本就是“直角的”。</div>",
+    ),
+    "# orthogonal 按词源来说 直角的？\n\n对，词源上基本就是“直角的”。",
+  );
+  assert.equal(
+    context.cleanHTML('<p dir="auto">##&#160;词源</p>'),
+    "## 词源",
+  );
+  assert.equal(
+    context.cleanHTML('<p class="lead">#&nbsp;intentional rich HTML</p>'),
+    '<p class="lead">#&nbsp;intentional rich HTML</p>',
   );
 });
 

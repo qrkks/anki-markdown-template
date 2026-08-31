@@ -192,6 +192,30 @@
       return normalized;
     };
 
+    const normalizeMarkdownParagraphs = (value) => {
+      const layoutAttributes = (attributes) =>
+        /^(?:\s*dir\s*=\s*(?:"auto"|'auto'|auto)\s*)?$/i.test(attributes);
+      const spacing =
+        /(?:[ \t\u00a0]|&nbsp;|&#0*160;|&#x0*a0;)+/i;
+      const emptyParagraph =
+        /^(?:(?:\s|&nbsp;|&#0*160;|&#x0*a0;)*<br\s*\/?>)*(?:\s|&nbsp;|&#0*160;|&#x0*a0;)*$/i;
+
+      return value.replace(
+        /<p\b([^>]*)>([\s\S]*?)<\/p\s*>/gi,
+        (paragraph, attributes, content) => {
+          if (!layoutAttributes(attributes)) return paragraph;
+          if (emptyParagraph.test(content)) return "\n\n";
+
+          const heading = content.match(
+            new RegExp(`^\\s*(#{1,6})${spacing.source}([\\s\\S]*?)\\s*$`, "i"),
+          );
+          return heading
+            ? `\n\n${heading[1]} ${heading[2]}\n\n`
+            : paragraph;
+        },
+      );
+    };
+
     // Code is opaque input. Protect it before interpreting any Anki HTML.
     const protectedCode = [];
     const protectCode = (value) => {
@@ -207,7 +231,7 @@
 
     // Anki commonly uses bare divs and br elements as line wrappers.
     // Divs with classes/styles remain raw HTML and are sanitized later.
-    cleaned = normalizeLayoutDivs(cleaned)
+    cleaned = normalizeLayoutDivs(normalizeMarkdownParagraphs(cleaned))
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .replace(/^(?:[ \t]*\n)+/, "")

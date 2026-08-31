@@ -81,6 +81,7 @@
 - fenced code block 和行内代码中的内容不会参与 HTML 清理，`<div>`、`<script>` 等标签会作为代码文字显示。
 - 四个空格或制表符缩进不会生成代码块；需要代码块时请明确使用三个反引号围栏。
 - Anki 编辑器常用的无属性 `<div>`、`<div dir="auto">` 和 `<br>` 会转换成换行。
+- Anki 编辑器生成的空 `<p>` 会转换成空行；无样式 `<p>` 中以 `#` 开头的标题会展开为 Markdown，并把标题标记后的 `&nbsp;` 恢复成普通空格。
 - 带 `class`、`style` 等属性的 `<div>` 以及图片、表格、链接等其他 HTML 会保留，并在渲染后交给 DOMPurify 清理。
 - HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
 
@@ -114,6 +115,25 @@ pnpm run install:anki:dry-run
 pnpm run install:anki
 pnpm run install:anki:prune
 ```
+
+### 一键审计和同步本机模板
+
+修改共享渲染器后，可以一次审计或同步当前受管的三个笔记类型：`单词`、
+`Markdown Basic` 和 `Obsidian-basic`：
+
+```powershell
+pnpm run audit:anki
+pnpm run sync:anki:dry-run
+pnpm run sync:anki
+```
+
+`audit:anki` 和 `sync:anki:dry-run` 都只读检查 Anki；前者用于日常确认是否落后，后者用于
+同步前预览。`sync:anki` 会先完整预检，只有三个目标全部通过后才开始更新；更新后还会回读
+确认它们与当前仓库一致。每个实际发生变化的笔记类型仍会单独备份到 `.anki-backups/`。
+固定版本媒体资源只检查和同步一次。
+
+`KaTeX and Markdown Basic` 与 `KaTeX and Markdown Cloze` 使用具有额外兼容要求的旧渲染器，
+明确不在一键同步范围内。上述命令也不会修改字段、笔记内容、卡片、牌组或学习记录。
 
 ### 迁移本地 Obsidian-basic
 

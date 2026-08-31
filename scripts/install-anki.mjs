@@ -110,6 +110,17 @@ export async function syncResources({
   downloadResource = defaultDownloadResource,
   log = console.log,
 } = {}) {
+  if (resourceManifest.length === 0 && managedResourcePatterns.length === 0) {
+    return {
+      current: [],
+      missing: [],
+      mismatched: [],
+      oldFiles: [],
+      updated: [],
+      deleted: [],
+    };
+  }
+
   const expectedNames = new Set(resourceManifest.map(({filename}) => filename));
   const missing = [];
   const mismatched = [];
