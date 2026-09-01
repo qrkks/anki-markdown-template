@@ -116,6 +116,10 @@ test("release identities are stable and unambiguous", async () => {
   const config = JSON.parse(configText);
   const vocabularyConfig = JSON.parse(vocabularyConfigText);
   const packageJson = JSON.parse(packageText);
+  const releaseNotes = await readFile(
+    `docs/releases/v${packageJson.version}.md`,
+    "utf8",
+  );
   assert.equal(config.noteTypeName, "Markdown Basic");
   assert.equal(config.cardTemplateName, "Basic");
   assert.equal(config.deckName, "Markdown Basic Demo");
@@ -169,12 +173,17 @@ test("release identities are stable and unambiguous", async () => {
   assert.match(vocabularyBuilder, /import_anki_package/);
   assert.match(vocabularyBuilder, /card_ords != \[0, 1, 2\]/);
   assert.match(vocabularyBuilder, /normalize_archive\(output, timestamp\)/);
-  assert.match(workflow, /Verify tag matches package version/);
+  assert.match(workflow, /Verify release metadata/);
+  assert.match(workflow, /docs\/releases\/\$\{GITHUB_REF_NAME\}\.md/);
   assert.match(workflow, /SOURCE_DATE_EPOCH/);
   assert.match(workflow, /pnpm run package:all/);
   assert.match(workflow, /anki-markdown-basic\.apkg/);
   assert.match(workflow, /anki-english-vocabulary\.apkg/);
   assert.match(workflow, /gh release create/);
+  assert.match(workflow, /--notes-file/);
+  assert.doesNotMatch(workflow, /--generate-notes/);
+  assert.match(releaseNotes, /^## English$/m);
+  assert.match(releaseNotes, /^## 简体中文$/m);
 });
 
 test("English vocabulary preset is built with its required fields", async () => {

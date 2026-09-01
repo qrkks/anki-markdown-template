@@ -11,7 +11,10 @@ The release publishes two independently installable artifacts:
 
 1. Ensure the worktree contains only the intended release changes.
 2. Set the target version in `package.json`.
-3. Run:
+3. Add the version to both `CHANGELOG.md` and `CHANGELOG.zh-CN.md`, then create the
+   bilingual GitHub Release body at `docs/releases/vX.Y.Z.md`. Keep the version and
+   date headings aligned across both changelogs.
+4. Run:
 
    ```powershell
    pnpm install --frozen-lockfile
@@ -20,8 +23,8 @@ The release publishes two independently installable artifacts:
    pnpm run package:all
    ```
 
-4. Confirm that `release/SHA256SUMS.txt` matches both APKG files.
-5. Import both APKGs into an isolated Anki profile. Check the Basic front and answer;
+5. Confirm that `release/SHA256SUMS.txt` matches both APKG files.
+6. Import both APKGs into an isolated Anki profile. Check the Basic front and answer;
    all three vocabulary cards; dark mode; multiline KaTeX; highlighted code; Mermaid;
    and offline reopening. Never use the default profile for release-import validation.
 
@@ -42,8 +45,9 @@ git push origin v0.2.0
 ```
 
 `.github/workflows/release.yml` rejects a tag that differs from the version in
-`package.json`. After checks and isolated APKG verification pass, it creates the GitHub
-Release and attaches the APKG and checksum file.
+`package.json` or has no matching `docs/releases/vX.Y.Z.md`. After checks and isolated
+APKG verification pass, it creates the GitHub Release from that bilingual notes file
+and attaches the APKG and checksum file.
 
 Verify the published artifact independently:
 

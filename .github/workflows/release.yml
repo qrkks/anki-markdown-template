@@ -32,11 +32,12 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           python -m pip install --disable-pip-version-check uv==0.11.24
-      - name: Verify tag matches package version
+      - name: Verify release metadata
         shell: bash
         run: |
           expected="v$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
           test "$GITHUB_REF_NAME" = "$expected"
+          test -f "docs/releases/${GITHUB_REF_NAME}.md"
       - run: pnpm run check
       - name: Build and verify release APKGs
         shell: bash
@@ -48,10 +49,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          notes_file="docs/releases/${GITHUB_REF_NAME}.md"
           gh release create "$GITHUB_REF_NAME" \
             release/anki-markdown-basic.apkg \
             release/anki-english-vocabulary.apkg \
             release/SHA256SUMS.txt \
             --verify-tag \
-            --generate-notes \
+            --notes-file "$notes_file" \
             --title "Anki Markdown Template $GITHUB_REF_NAME"
