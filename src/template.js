@@ -301,7 +301,7 @@
 
     let protectedText = protect(
       text,
-      /\$\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$\$/g,
+      /^[ \t]*\$\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$\$[ \t]*$/gm,
       (content) => `$$\n${content}\n$$`,
     );
     protectedText = protect(

@@ -1034,6 +1034,17 @@ After</p>`,
   assert.doesNotMatch(restored, /<br>/);
   assert.match(restored, /1\\\\\n1/);
 
+  const singleLineDollars = String.raw`Before
+$$A=CF$$
+**Markdown after the first formula**
+## Heading between formulas
+$$T=\sum_i u_i \circ v_i$$
+After`;
+  const protectedSingleLineDollars =
+    context.protectDisplayMathBlocks(singleLineDollars);
+  assert.equal(protectedSingleLineDollars.blocks.length, 0);
+  assert.equal(protectedSingleLineDollars.text, singleLineDollars);
+
   const embeddedInput = String.raw`同时，\[
 p = Pb = \dfrac{aa^T}{a^Ta}b
 \]，
