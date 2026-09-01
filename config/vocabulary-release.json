@@ -1,0 +1,26 @@
+{
+  "noteTypeName": "单词",
+  "deckName": "English Vocabulary Demo",
+  "artifactName": "anki-english-vocabulary.apkg",
+  "modelId": 1424386168963,
+  "deckId": 1805899938,
+  "fieldIds": {
+    "单词": 1255977342,
+    "音标": 1570858237,
+    "发音": 1904585831,
+    "词性 1": 1994066359,
+    "释义 1": 1572024430,
+    "词性 2": 1304574315,
+    "释义 2": 1609370732,
+    "例句": 1161278368,
+    "例句翻译": 1555652993,
+    "词组短语": 1577474449,
+    "拓展": 1808696311
+  },
+  "templateIds": {
+    "RECITE": 1227869095,
+    "SPELLING": 1324909151,
+    "DICTATION": 1964041517
+  },
+  "guidSeed": "qrkks/anki-markdown-template:english-vocabulary-demo"
+}

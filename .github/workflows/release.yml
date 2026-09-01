@@ -37,11 +37,11 @@ jobs:
           expected="v$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
           test "$GITHUB_REF_NAME" = "$expected"
       - run: pnpm run check
-      - name: Build and verify Markdown Basic APKG
+      - name: Build and verify release APKGs
         shell: bash
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          pnpm run package:basic
+          pnpm run package:all
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -49,6 +49,7 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             release/anki-markdown-basic.apkg \
+            release/anki-english-vocabulary.apkg \
             release/SHA256SUMS.txt \
             --verify-tag \
             --generate-notes \

@@ -8,22 +8,18 @@ import {
   RESOURCE_MANIFEST,
 } from "./resource-manifest.mjs";
 
-export const MODEL_NAME = "单词";
-export const TEMPLATE_NAMES = ["RECITE", "SPELLING", "DICTATION"];
+const releaseConfig = JSON.parse(
+  await readFile(
+    new URL("../config/vocabulary-release.json", import.meta.url),
+    "utf8",
+  ),
+);
+
+export const MODEL_NAME = releaseConfig.noteTypeName;
+export const MODEL_ID = releaseConfig.modelId;
+export const TEMPLATE_NAMES = Object.keys(releaseConfig.templateIds);
 export const TEMPLATE_NAME = TEMPLATE_NAMES[0];
-export const REQUIRED_FIELDS = [
-  "单词",
-  "音标",
-  "词性 1",
-  "释义 1",
-  "词性 2",
-  "释义 2",
-  "发音",
-  "例句",
-  "例句翻译",
-  "拓展",
-  "词组短语",
-];
+export const REQUIRED_FIELDS = Object.keys(releaseConfig.fieldIds);
 
 const LEGACY_FIELDS = new Map([
   ["词性 1", "词性1"],
@@ -227,7 +223,12 @@ async function loadArtifacts() {
   };
 }
 
-export function validateExistingModel(fields, templates) {
+export function validateExistingModel(modelId, fields, templates) {
+  if (modelId !== MODEL_ID) {
+    throw new Error(
+      `笔记类型“${MODEL_NAME}”的 ID 为 ${modelId}，与受管模板 ID ${MODEL_ID} 不同；为避免覆盖同名模板，已停止。`,
+    );
+  }
   const missing = REQUIRED_FIELDS.filter((field) => !fields.includes(field));
   if (missing.length) {
     const migrations = missing
@@ -249,6 +250,35 @@ export function validateExistingModel(fields, templates) {
       `笔记类型“${MODEL_NAME}”缺少卡片模板：${missingTemplates.join("，")}`,
     );
   }
+}
+
+export function getVocabularyFieldOrderChanges(fields) {
+  const plannedFields = [...fields];
+  const changes = [];
+
+  const moveAfter = (fieldName, targetName, description) => {
+    const fieldIndex = plannedFields.indexOf(fieldName);
+    const targetIndex = plannedFields.indexOf(targetName);
+    if (fieldIndex < 0 || targetIndex < 0 || fieldIndex === targetIndex + 1) return;
+    plannedFields.splice(fieldIndex, 1);
+    const index = plannedFields.indexOf(targetName) + 1;
+    plannedFields.splice(index, 0, fieldName);
+    changes.push({fieldName, index, description});
+  };
+
+  const moveBeforeWhenReversed = (fieldName, targetName, description) => {
+    const fieldIndex = plannedFields.indexOf(fieldName);
+    const targetIndex = plannedFields.indexOf(targetName);
+    if (fieldIndex < 0 || targetIndex < 0 || fieldIndex < targetIndex) return;
+    plannedFields.splice(fieldIndex, 1);
+    const index = plannedFields.indexOf(targetName);
+    plannedFields.splice(index, 0, fieldName);
+    changes.push({fieldName, index, description});
+  };
+
+  moveAfter("发音", "音标", "发音移至音标后");
+  moveBeforeWhenReversed("词组短语", "拓展", "词组短语移至拓展前");
+  return changes;
 }
 
 async function defaultSaveBackup(data) {
@@ -284,30 +314,18 @@ export async function installAnki({
     log,
   });
 
-  const modelNames = await request("modelNames");
-  if (!modelNames.includes(MODEL_NAME)) {
-    if (dryRun) {
-      log(`[dry-run] 将创建笔记类型“${MODEL_NAME}”及三套卡片模板。`);
-      return {action: "create", resources};
-    }
-    await request("createModel", {
-      modelName: MODEL_NAME,
-      inOrderFields: REQUIRED_FIELDS,
-      cardTemplates: TEMPLATE_NAMES.map((name) => ({
-        Name: name,
-        ...artifacts.templates[name],
-      })),
-      css: artifacts.css,
-      isCloze: false,
-    });
-    log(`已创建 Anki 笔记类型“${MODEL_NAME}”及三套卡片模板。`);
-    return {action: "create", resources};
+  const modelNamesAndIds = await request("modelNamesAndIds");
+  if (!Object.hasOwn(modelNamesAndIds, MODEL_NAME)) {
+    throw new Error(
+      `未找到笔记类型“${MODEL_NAME}”。请先导入 ${releaseConfig.artifactName}，再运行本更新器。`,
+    );
   }
 
   const fields = await request("modelFieldNames", {modelName: MODEL_NAME});
   const templates = await request("modelTemplates", {modelName: MODEL_NAME});
   const styling = await request("modelStyling", {modelName: MODEL_NAME});
-  validateExistingModel(fields, templates);
+  validateExistingModel(modelNamesAndIds[MODEL_NAME], fields, templates);
+  const fieldOrderChanges = getVocabularyFieldOrderChanges(fields);
 
   const changedTemplates = TEMPLATE_NAMES.filter((name) => {
     const current = templates[name];
@@ -316,7 +334,7 @@ export async function installAnki({
   });
   const templateChanged = changedTemplates.length > 0;
   const stylingChanged = styling.css !== artifacts.css;
-  if (!templateChanged && !stylingChanged) {
+  if (!templateChanged && !stylingChanged && fieldOrderChanges.length === 0) {
     log(`Anki 笔记类型“${MODEL_NAME}”已经是最新版本。`);
     const resourcesChanged = resources.updated.length > 0 || resources.deleted.length > 0;
     return {action: resourcesChanged ? "resources" : "none", resources};
@@ -327,6 +345,8 @@ export async function installAnki({
       `[dry-run] 将更新：${[
         templateChanged && `${changedTemplates.join("/")} 正反面`,
         stylingChanged && "共享 CSS",
+        fieldOrderChanges.length > 0 &&
+          `字段顺序（${fieldOrderChanges.map(({description}) => description).join("、")}）`,
       ]
         .filter(Boolean)
         .join("、")}。`,
@@ -356,8 +376,24 @@ export async function installAnki({
       model: {name: MODEL_NAME, css: artifacts.css},
     });
   }
+  for (const {fieldName, index} of fieldOrderChanges) {
+    await request("modelFieldReposition", {modelName: MODEL_NAME, fieldName, index});
+  }
+  if (fieldOrderChanges.length > 0) {
+    const updatedFields = await request("modelFieldNames", {modelName: MODEL_NAME});
+    if (getVocabularyFieldOrderChanges(updatedFields).length > 0) {
+      throw new Error("字段顺序读回验证失败。");
+    }
+  }
   log(`已更新 Anki；原模板备份：${backup}`);
-  return {action: "update", templateChanged, stylingChanged, backup, resources};
+  return {
+    action: "update",
+    templateChanged,
+    stylingChanged,
+    fieldOrderChanged: fieldOrderChanges.length > 0,
+    backup,
+    resources,
+  };
 }
 
 const isMain =

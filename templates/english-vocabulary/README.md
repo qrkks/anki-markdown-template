@@ -57,6 +57,15 @@
 
 ## 安装
 
+### APKG（推荐）
+
+从项目的 [GitHub Releases](https://github.com/qrkks/anki-markdown-template/releases)
+下载 `anki-english-vocabulary.apkg`，在 Anki 中选择 **文件 → 导入**。安装包会创建
+`单词` 笔记类型、三套卡片模板、离线资源和一条可删除的示例笔记。
+已使用本仓库开发安装器管理同一模型 ID 的用户不需要重复导入，可直接使用下文的开发更新命令。
+
+### 手动安装
+
 先在项目根目录运行：
 
 ```powershell
@@ -71,7 +80,7 @@ pnpm run build
 
 模板包含 Anki 夜间模式样式。首次安装或修改样式后，建议分别检查日间模式和夜间模式。
 
-## 直接安装或更新到 Anki
+## 开发更新到 Anki
 
 安装并启用 AnkiConnect 后，保持 Anki 桌面版运行，然后在项目根目录执行：
 
@@ -79,10 +88,11 @@ pnpm run build
 pnpm run install:anki
 ```
 
-该命令绑定到 `单词` 笔记类型中的三套卡片模板：`RECITE`、`SPELLING` 和 `DICTATION`。
+该命令绑定到模型 ID 匹配的 `单词` 笔记类型及其三套卡片模板：
+`RECITE`、`SPELLING` 和 `DICTATION`。首次安装请导入 APKG；更新器不会创建一个无法与公开版本对齐的随机模型 ID。
 
-- 笔记类型不存在时，创建字段和三套模板。
 - 笔记类型存在时，更新三套模板的正反面和共享 CSS。
+- 笔记类型缺失或同名模型 ID 不匹配时，停止并给出安全提示。
 - 不修改笔记字段内容、卡片、牌组或学习进度。
 - 更新前把原模板和 CSS 备份到 `.anki-backups/`。
 

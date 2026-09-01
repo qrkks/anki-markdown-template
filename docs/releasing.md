@@ -1,8 +1,11 @@
 # Release workflow
 
-`Markdown Basic` is published as `anki-markdown-basic.apkg`. The package contains the
-`Markdown Basic` note type, the `Basic` card template, the `Markdown Basic Demo` deck,
-and all pinned local renderer resources.
+The release publishes two independently installable artifacts:
+
+- `anki-markdown-basic.apkg`: `Markdown Basic`, its `Basic` card template, demo deck,
+  and all pinned local renderer resources.
+- `anki-english-vocabulary.apkg`: `单词`, its `RECITE`/`SPELLING`/`DICTATION`
+  card templates, demo deck, and the same pinned local renderer resources.
 
 ## Local verification
 
@@ -14,18 +17,17 @@ and all pinned local renderer resources.
    pnpm install --frozen-lockfile
    pnpm run check
    $env:SOURCE_DATE_EPOCH = (git log -1 --format=%ct)
-   pnpm run package:basic
+   pnpm run package:all
    ```
 
-4. Confirm that `release/SHA256SUMS.txt` matches
-   `release/anki-markdown-basic.apkg`.
-5. Import the APKG into an isolated Anki profile and check the front, answer, dark mode,
-   multiline KaTeX, highlighted code, Mermaid, and offline reopening. Never use the
-   default profile for release-import validation.
+4. Confirm that `release/SHA256SUMS.txt` matches both APKG files.
+5. Import both APKGs into an isolated Anki profile. Check the Basic front and answer;
+   all three vocabulary cards; dark mode; multiline KaTeX; highlighted code; Mermaid;
+   and offline reopening. Never use the default profile for release-import validation.
 
-The package command already imports the artifact into a temporary collection through
-Anki's official Python library and verifies the stable model, field, and template IDs,
-the templates and Styling CSS, the demo note, and all media SHA-256 values.
+The package command already imports both artifacts into temporary collections through
+Anki's official Python library and verifies stable model, field, and template IDs,
+templates and Styling CSS, demo notes, generated cards, and all media SHA-256 values.
 `SOURCE_DATE_EPOCH` also fixes the APKG ZIP timestamps, so rebuilding the same commit
 produces the same package checksum.
 
@@ -34,9 +36,9 @@ produces the same package checksum.
 Push `main`, create the matching tag, and push the tag:
 
 ```powershell
-git tag v0.1.1
+git tag -a v0.2.0 -m "Release v0.2.0"
 git push origin main
-git push origin v0.1.1
+git push origin v0.2.0
 ```
 
 `.github/workflows/release.yml` rejects a tag that differs from the version in
@@ -46,9 +48,10 @@ Release and attaches the APKG and checksum file.
 Verify the published artifact independently:
 
 ```powershell
-gh release view v0.1.1
-gh release download v0.1.1 --pattern "anki-markdown-basic.apkg" --pattern "SHA256SUMS.txt"
+gh release view v0.2.0
+gh release download v0.2.0 --pattern "*.apkg" --pattern "SHA256SUMS.txt"
 Get-FileHash -Algorithm SHA256 .\anki-markdown-basic.apkg
+Get-FileHash -Algorithm SHA256 .\anki-english-vocabulary.apkg
 ```
 
 ## Rollback

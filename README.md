@@ -54,6 +54,23 @@
 
 没有标记的 HTML 和条件块不会被 Markdown 渲染器改写。需要保留原生交互行为的内容应放在 Markdown 区域之外，也不要嵌套 `data-markdown` 容器。
 
+## 安装英语词汇卡片
+
+普通用户从 [GitHub Releases](https://github.com/qrkks/anki-markdown-template/releases)
+下载 `anki-english-vocabulary.apkg`，然后在 Anki 中选择 **文件 → 导入**。安装包会创建：
+
+- 笔记类型 `单词`
+- 11 个按内容层级排列的字段
+- `RECITE`、`SPELLING`、`DICTATION` 三套卡片模板
+- 含一条可删除示例笔记的 `English Vocabulary Demo` 牌组
+- Markdown、KaTeX、代码高亮和 Mermaid 所需的本地媒体资源
+
+字段顺序为：`单词 → 音标 → 发音 → 词性 1 → 释义 1 → 词性 2 → 释义 2 → 例句 → 例句翻译 → 词组短语 → 拓展`。
+模板结构、手动安装和开发更新方法见
+[`templates/english-vocabulary`](templates/english-vocabulary)。
+已通过本仓库开发安装器管理同一模型 ID 的用户不需要重复导入 APKG，继续使用
+`pnpm run install:anki:dry-run` 和 `pnpm run install:anki` 即可安全更新。
+
 ## 模板
 
 仓库目前包含两套模板：
@@ -102,7 +119,7 @@
 - `_markdown-it-14.3.0.min.js`
 - `_mermaid-11.16.0.min.js`
 
-`pnpm run install:anki` 会先按固定 URL 下载缺失或校验不符的资源，通过 SHA-256
+`pnpm run install:anki` 用于更新已安装且模型 ID 匹配的 `单词` 笔记类型。它会先按固定 URL 下载缺失或校验不符的资源，通过 SHA-256
 校验后写入 Anki 媒体库，再更新模板。KaTeX 使用的 20 个 WOFF2 字体也会一起安装，
 因此正常安装后可以完全离线使用。单个可选资源在本地和 CDN 都加载失败时，只会关闭
 对应功能，不会阻止其他内容显示。
@@ -170,13 +187,14 @@ pnpm run check
 安装 [uv](https://docs.astral.sh/uv/) 后运行：
 
 ```powershell
-pnpm run package:basic
+pnpm run package:all
 ```
 
 命令会下载并校验 30 个固定版本资源，生成
-`release/anki-markdown-basic.apkg` 和 `release/SHA256SUMS.txt`，再用固定版本的
-Anki 25.09.4 官方 Python 库导入到隔离的临时 collection，核对模型、字段、模板 ID、CSS、示例笔记和全部
-媒体哈希。它不会访问或修改用户的 Anki profile。
+`release/anki-markdown-basic.apkg`、`release/anki-english-vocabulary.apkg` 和
+`release/SHA256SUMS.txt`。两个安装包都会通过固定版本的 Anki 25.09.4 官方
+Python 库导入到隔离的临时 collection，核对模型、字段、模板 ID、CSS、示例笔记、
+生成卡片和全部媒体哈希。它不会访问或修改用户的 Anki profile。
 
 Tag `vX.Y.Z` 会触发 GitHub Actions；只有 tag 与 `package.json` 版本一致、完整检查和
 APKG 隔离导入验证均通过时，工作流才会创建 GitHub Release。完整流程和回滚说明见
@@ -194,7 +212,7 @@ pnpm run install:anki:basic
 
 该命令要求先通过 APKG 安装具有受管模型 ID 的 `Markdown Basic`。它会校验笔记类型、
 同步固定版本资源、备份原模板，然后只更新 `Basic` 正反面和 CSS；不会修改字段、笔记、
-卡片、牌组或学习记录。对外发布仍以 `anki-markdown-basic.apkg` 为唯一安装文件。
+卡片、牌组或学习记录。对外发布以 GitHub Release 中的两个 APKG 为安装文件。
 
 ## 许可证
 

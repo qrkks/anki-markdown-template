@@ -4,9 +4,11 @@ import vm from "node:vm";
 import test from "node:test";
 import {
   MODEL_NAME,
+  MODEL_ID,
   REQUIRED_FIELDS,
   TEMPLATE_NAME,
   TEMPLATE_NAMES,
+  getVocabularyFieldOrderChanges,
   installAnki,
   sha256,
   syncResources,
@@ -95,21 +97,36 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /<script>/);
 });
 
-test("Markdown Basic release identity is stable and unambiguous", async () => {
-  const [configText, packageText, builder, workflow] = await Promise.all([
+test("release identities are stable and unambiguous", async () => {
+  const [
+    configText,
+    vocabularyConfigText,
+    packageText,
+    builder,
+    vocabularyBuilder,
+    workflow,
+  ] = await Promise.all([
     readFile("config/basic-release.json", "utf8"),
+    readFile("config/vocabulary-release.json", "utf8"),
     readFile("package.json", "utf8"),
     readFile("scripts/build-basic-apkg.py", "utf8"),
+    readFile("scripts/build-vocabulary-apkg.py", "utf8"),
     readFile(".github/workflows/release.yml", "utf8"),
   ]);
   const config = JSON.parse(configText);
+  const vocabularyConfig = JSON.parse(vocabularyConfigText);
   const packageJson = JSON.parse(packageText);
   assert.equal(config.noteTypeName, "Markdown Basic");
   assert.equal(config.cardTemplateName, "Basic");
   assert.equal(config.deckName, "Markdown Basic Demo");
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
-  assert.equal(packageJson.version, "0.1.1");
+  assert.equal(packageJson.version, "0.2.0");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
+  assert.match(
+    packageJson.scripts["package:vocabulary"],
+    /package-vocabulary\.mjs/,
+  );
+  assert.match(packageJson.scripts["package:all"], /write-release-checksums\.mjs/);
   assert.match(
     packageJson.scripts["install:anki:basic"],
     /install-basic-anki\.mjs/,
@@ -122,14 +139,41 @@ test("Markdown Basic release identity is stable and unambiguous", async () => {
   ];
   assert.equal(new Set(ids).size, ids.length);
   assert.ok(ids.every((id) => Number.isSafeInteger(id) && id > 0));
+  assert.equal(vocabularyConfig.noteTypeName, MODEL_NAME);
+  assert.equal(vocabularyConfig.modelId, MODEL_ID);
+  assert.equal(vocabularyConfig.deckName, "English Vocabulary Demo");
+  assert.equal(
+    vocabularyConfig.artifactName,
+    "anki-english-vocabulary.apkg",
+  );
+  assert.deepEqual(Object.keys(vocabularyConfig.fieldIds), REQUIRED_FIELDS);
+  assert.deepEqual(Object.keys(vocabularyConfig.templateIds), TEMPLATE_NAMES);
+  const vocabularyIds = [
+    vocabularyConfig.modelId,
+    vocabularyConfig.deckId,
+    ...Object.values(vocabularyConfig.fieldIds),
+    ...Object.values(vocabularyConfig.templateIds),
+  ];
+  assert.equal(new Set(vocabularyIds).size, vocabularyIds.length);
+  assert.ok(
+    vocabularyIds.every((id) => Number.isSafeInteger(id) && id > 0),
+  );
   assert.match(builder, /anki==25\.09\.4/);
   assert.match(builder, /genanki==0\.13\.1/);
   assert.match(builder, /Collection\(/);
   assert.match(builder, /import_anki_package/);
   assert.match(builder, /normalize_archive\(output, timestamp\)/);
+  assert.match(vocabularyBuilder, /anki==25\.09\.4/);
+  assert.match(vocabularyBuilder, /genanki==0\.13\.1/);
+  assert.match(vocabularyBuilder, /Collection\(/);
+  assert.match(vocabularyBuilder, /import_anki_package/);
+  assert.match(vocabularyBuilder, /card_ords != \[0, 1, 2\]/);
+  assert.match(vocabularyBuilder, /normalize_archive\(output, timestamp\)/);
   assert.match(workflow, /Verify tag matches package version/);
   assert.match(workflow, /SOURCE_DATE_EPOCH/);
-  assert.match(workflow, /pnpm run package:basic/);
+  assert.match(workflow, /pnpm run package:all/);
+  assert.match(workflow, /anki-markdown-basic\.apkg/);
+  assert.match(workflow, /anki-english-vocabulary\.apkg/);
   assert.match(workflow, /gh release create/);
 });
 
@@ -279,13 +323,63 @@ test("Anki installer refuses legacy field names without mutating them", () => {
     (field) => legacyNames.get(field) || field,
   );
   assert.throws(
-    () => validateExistingModel(legacyFields, {[TEMPLATE_NAME]: {}}),
+    () => validateExistingModel(MODEL_ID, legacyFields, {[TEMPLATE_NAME]: {}}),
     /检测到旧字段名/,
   );
 });
 
+test("Anki installer refuses a different same-name model", () => {
+  const templates = Object.fromEntries(TEMPLATE_NAMES.map((name) => [name, {}]));
+  assert.throws(
+    () => validateExistingModel(MODEL_ID + 1, REQUIRED_FIELDS, templates),
+    /与受管模板 ID .* 不同/,
+  );
+});
+
+test("English vocabulary fields keep the managed editing order", () => {
+  assert.deepEqual(REQUIRED_FIELDS.slice(0, 3), ["单词", "音标", "发音"]);
+  assert.deepEqual(REQUIRED_FIELDS.slice(-2), ["词组短语", "拓展"]);
+  assert.deepEqual(
+    getVocabularyFieldOrderChanges([
+      "单词",
+      "音标",
+      "词性 1",
+      "释义 1",
+      "词性 2",
+      "释义 2",
+      "发音",
+      "例句",
+      "例句翻译",
+      "拓展",
+      "词组短语",
+    ]),
+    [
+      {fieldName: "发音", index: 2, description: "发音移至音标后"},
+      {
+        fieldName: "词组短语",
+        index: REQUIRED_FIELDS.length - 2,
+        description: "词组短语移至拓展前",
+      },
+    ],
+  );
+  assert.deepEqual(getVocabularyFieldOrderChanges(REQUIRED_FIELDS), []);
+});
+
 test("Anki installer updates all managed templates and shared styling", async () => {
   const actions = [];
+  let currentFields = [
+    "单词",
+    "音标",
+    "词性 1",
+    "释义 1",
+    "词性 2",
+    "释义 2",
+    "发音",
+    "例句",
+    "例句翻译",
+    "拓展",
+    "词组短语",
+  ];
   const currentTemplates = {
     [TEMPLATE_NAME]: {Front: "old front", Back: "old back"},
     SPELLING: {Front: "keep", Back: "keep"},
@@ -295,10 +389,15 @@ test("Anki installer updates all managed templates and shared styling", async ()
   const request = async (action, params) => {
     actions.push({action, params});
     if (action === "version") return 6;
-    if (action === "modelNames") return [MODEL_NAME];
-    if (action === "modelFieldNames") return REQUIRED_FIELDS;
+    if (action === "modelNamesAndIds") return {[MODEL_NAME]: MODEL_ID};
+    if (action === "modelFieldNames") return currentFields;
     if (action === "modelTemplates") return currentTemplates;
     if (action === "modelStyling") return {css: "old css"};
+    if (action === "modelFieldReposition") {
+      const oldIndex = currentFields.indexOf(params.fieldName);
+      currentFields.splice(oldIndex, 1);
+      currentFields.splice(params.index, 0, params.fieldName);
+    }
     return null;
   };
 
@@ -316,6 +415,21 @@ test("Anki installer updates all managed templates and shared styling", async ()
   assert.deepEqual(Object.keys(templateUpdate.params.model.templates), TEMPLATE_NAMES);
   assert.equal(templateUpdate.params.model.templates.UNMANAGED, undefined);
   assert.ok(actions.some(({action}) => action === "updateModelStyling"));
+  assert.deepEqual(
+    actions
+      .filter(({action}) => action === "modelFieldReposition")
+      .map(({params}) => params),
+    [
+      {modelName: MODEL_NAME, fieldName: "发音", index: 2},
+      {
+        modelName: MODEL_NAME,
+        fieldName: "词组短语",
+        index: REQUIRED_FIELDS.length - 2,
+      },
+    ],
+  );
+  assert.deepEqual(currentFields.slice(0, 3), ["单词", "音标", "发音"]);
+  assert.deepEqual(currentFields.slice(-2), ["词组短语", "拓展"]);
 });
 
 test("Markdown Basic updater validates identity and updates only Basic", async () => {
