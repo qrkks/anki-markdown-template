@@ -22,5 +22,8 @@
     "check:docs": "node scripts/check-doc-parity.mjs",
     "test": "node --test",
     "check": "pnpm run build && node --check src/template.js && node --check scripts/install-anki.mjs && node --check scripts/install-basic-anki.mjs && node --check scripts/migrate-obsidian-basic.mjs && node --check scripts/sync-anki.mjs && node --check scripts/package-basic.mjs && node --check scripts/package-vocabulary.mjs && node --check scripts/write-release-checksums.mjs && node --check scripts/resource-manifest.mjs && node --check scripts/check-doc-parity.mjs && pnpm run check:docs && pnpm test"
+  },
+  "devDependencies": {
+    "markdown-it": "14.3.0"
   }
 }

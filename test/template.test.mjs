@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import vm from "node:vm";
 import test from "node:test";
+import MarkdownIt from "markdown-it";
 import {
   MODEL_NAME,
   MODEL_ID,
@@ -985,32 +986,83 @@ test("cleanHTML restores headings typed in Anki rich-text paragraphs", async () 
   );
 });
 
-test("runtime preserves and enables backslash math delimiters", async () => {
+async function createMathRenderer() {
   const source = await readFile("src/template.js", "utf8");
-  const context = vm.createContext({});
+  const context = vm.createContext({
+    debug() {},
+    escapeHtml(value) {
+      return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    },
+  });
   vm.runInContext(
-    `${extractFunction(source, "protectMathDelimiters", "restoreMathDelimiters")}
-     ${extractFunction(source, "restoreMathDelimiters", "escapeHtml")}
-     this.protectMathDelimiters = protectMathDelimiters;
-     this.restoreMathDelimiters = restoreMathDelimiters;`,
+    `${extractFunction(source, "cleanHTML", "protectDisplayMathBlocks")}
+     ${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
+     ${extractFunction(source, "enableMarkdownMath", "escapeHtml")}
+     ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}`,
     context,
   );
+  const md = new MarkdownIt({html: true, breaks: true, typographer: true, linkify: true});
+  md.block.ruler.disable(["code"]);
+  context.enableMarkdownMath(md);
+  return (input) => {
+    const protectedMath = context.protectDisplayMathBlocks(context.cleanHTML(input));
+    return context.restoreDisplayMathBlocks(md.render(protectedMath.text), protectedMath.blocks);
+  };
+}
 
-  const input = String.raw`Inline \(x + 1\), display \[y = 2\].`;
-  const protectedText = context.protectMathDelimiters(input);
-  assert.doesNotMatch(protectedText, /\\[()[\]]/);
-  assert.equal(context.restoreMathDelimiters(protectedText), input);
-  const codeInput = "Code `\\(z\\)` and fenced code:\n```tex\n\\[z\\]\n```";
-  assert.equal(
-    context.restoreMathDelimiters(context.protectMathDelimiters(codeInput)),
-    codeInput,
-  );
+test("runtime protects complete formulas from Markdown emphasis and escapes", async () => {
+  const render = await createMathRenderer();
+  for (const [left, right] of [["$", "$"], ["$$", "$$"], ["\\(", "\\)"], ["\\[", "\\]"]]) {
+    const formula = String.raw`${left}a*b*c + x_{i_j_k} + \{z\} + \text{a--b...}${right}`;
+    assert.equal(render(formula), `<p>${formula}</p>\n`);
+    assert.equal(
+      render(`*before* ${formula} **after**`),
+      `<p><em>before</em> ${formula} <strong>after</strong></p>\n`,
+    );
+  }
+  assert.equal(render(String.raw`$x^*$ and $y^*$`), "<p>$x^*$ and $y^*$</p>\n");
+});
 
+test("runtime keeps formula boundaries, escaped characters, and HTML entities intact", async () => {
+  const render = await createMathRenderer();
+  const formula = String.raw`$\text{cost $5} + a*b*c + \$ + x$`;
+  assert.equal(render(formula), `<p>${formula}</p>\n`);
+  assert.equal(render(String.raw`\(a*b*c + \\) + d\)`), String.raw`<p>\(a*b*c + \\) + d\)</p>` + "\n");
+  assert.equal(render(String.raw`\$5 and *text*`), "<p>$5 and <em>text</em></p>\n");
+  assert.equal(render(String.raw`unclosed \(a*b*c`), "<p>unclosed (a<em>b</em>c</p>\n");
+  assert.equal(render(String.raw`$x &lt; y &amp; a*b*c$`), "<p>$x &lt; y &amp; a*b*c$</p>\n");
+  assert.equal(render(String.raw`\(<img src=x onerror=alert(1)> + a*b*c\)`), String.raw`<p>\(&lt;img src=x onerror=alert(1)&gt; + a*b*c\)</p>` + "\n");
+  assert.equal(render(String.raw`[\(a*b*c\)](https://example.com)`), String.raw`<p><a href="https://example.com">\(a*b*c\)</a></p>` + "\n");
+});
+
+test("runtime preserves formula examples in inline and fenced code", async () => {
+  const render = await createMathRenderer();
+  const examples = [String.raw`$a*b*c$`, String.raw`$$a*b*c$$`, String.raw`\(a*b*c\)`, String.raw`\[a*b*c\]`];
+  for (const formula of examples) {
+    assert.equal(render(`\`${formula}\``), `<p><code>${formula}</code></p>\n`);
+    assert.equal(render(`\`\`\`tex\n${formula}\n\`\`\``), `<pre><code class="language-tex">${formula}\n</code></pre>\n`);
+  }
+});
+
+test("runtime preserves Markdown between separate formulas and multiline math", async () => {
+  const render = await createMathRenderer();
+  const input = "$$a*b*c$$\n\n**between**\n\n## Heading\n\n$$x*y*z$$\n\n$$\na*b*c + x_{i_j_k}\n$$";
+  assert.equal(render(input), "<p>$$a*b*c$$</p>\n<p><strong>between</strong></p>\n<h2>Heading</h2>\n<p>$$x*y*z$$</p>\n<p>$$\na*b*c + x_{i_j_k}\n$$</p>\n");
+  assert.equal(render(String.raw`同时，\[
+a*b*c
+\]，*后文*`), String.raw`<p>同时，\[
+a*b*c
+\]，<em>后文</em></p>` + "\n");
+});
+
+test("runtime enables math parsing before Markdown rendering", async () => {
+  const source = await readFile("src/template.js", "utf8");
   assert.match(source, /left:\s*"\\\\\(",\s*right:\s*"\\\\\)"/);
   assert.match(source, /left:\s*"\\\\\[",\s*right:\s*"\\\\\]"/);
+  assert.match(source, /enableMarkdownMath\(md\)/);
   assert.match(source, /protectDisplayMathBlocks\([\s\S]*cleanHTML\(original\)/);
-  assert.match(source, /protectMathDelimiters\(protectedDisplayMath\.text\)/);
-  assert.match(source, /restoreMathDelimiters\(md\.render\(text\)\)/);
+  assert.match(source, /restoreDisplayMathBlocks\(\s*md\.render\(text\)/);
 });
 
 test("code copy reports the real Anki-compatible clipboard result", async () => {
@@ -1107,7 +1159,7 @@ test("runtime preserves multiline display math across Markdown rendering", async
   });
   vm.runInContext(
     `${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
-     ${extractFunction(source, "restoreDisplayMathBlocks", "protectMathDelimiters")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
      ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}
      this.protectDisplayMathBlocks = protectDisplayMathBlocks;
      this.restoreDisplayMathBlocks = restoreDisplayMathBlocks;
