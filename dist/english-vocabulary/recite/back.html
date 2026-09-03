@@ -391,7 +391,7 @@
     return {text: protectedText, blocks};
   }
 
-  function restoreDisplayMathBlocks(text, blocks) {
+  function restoreDisplayMathBlocks(text, blocks, escape = true) {
     if (typeof text !== "string" || !Array.isArray(blocks)) return text || "";
 
     return text.replace(
@@ -402,7 +402,7 @@
         // such as matrix separators are already serialized as &amp;. Decode
         // that serialization before escaping once for safe DOM insertion.
         return typeof block === "string"
-          ? escapeHtml(decodeHtmlEntities(block))
+          ? (escape ? escapeHtml(decodeHtmlEntities(block)) : block)
           : token;
       },
     );
@@ -979,6 +979,11 @@
     // 重写代码块渲染规则
     md.renderer.rules.fence = function (tokens, idx, options, env, slf) {
       const token = tokens[idx];
+      // Restore formula source before highlighting can split a placeholder
+      // across HTML spans. Code and Mermaid escape their own output below.
+      const content = restoreDisplayMathBlocks(
+        token.content, env.displayMathBlocks, false,
+      );
       const info = token.info ? md.utils.unescapeAll(token.info.trim()) : "";
       const lang = info ? info.split(/\s+/g)[0] : "";
       const safeLang = lang.replace(/[^\w-]/g, "");
@@ -986,12 +991,12 @@
       // Mermaid 是图表容器，不应继承普通代码块的字体和布局。
       if (lang === "mermaid") {
         return `<div class="mermaid">${escapeHtml(
-          decodeHtmlEntities(token.content),
+          decodeHtmlEntities(content),
         )}</div>`;
       }
 
       // 直接使用 token 的内容进行高亮，因为 cleanHTML 已经处理过转义
-      const highlighted = options.highlight(token.content, lang, "");
+      const highlighted = options.highlight(content, lang, "");
 
       return (
         '<pre><code class="hljs language-' +
@@ -1010,7 +1015,7 @@
       debug(`🔄 开始渲染 Markdown 内容，长度：${text.length}`);
 
       const rendered = restoreDisplayMathBlocks(
-        md.render(text),
+        md.render(text, {displayMathBlocks: protectedDisplayMath.blocks}),
         protectedDisplayMath.blocks,
       );
       debug(`✅ Markdown 渲染完成，长度：${rendered.length}`);

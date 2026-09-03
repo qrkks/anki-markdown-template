@@ -864,7 +864,7 @@ test("runtime decodes arrows consistently before safe code rendering", async () 
   assert.equal(context.decodeHtmlEntities("a&#x27; = a&#39;"), "a' = a'");
   assert.match(
     source,
-    /return `<div class="mermaid">\$\{escapeHtml\(\s*decodeHtmlEntities\(token\.content\)/,
+    /return `<div class="mermaid">\$\{escapeHtml\(\s*decodeHtmlEntities\(content\)/,
   );
   assert.match(source, /decodedStr\s*=\s*decodeHtmlEntities\(str\)/);
   assert.match(
@@ -1045,6 +1045,67 @@ test("runtime preserves formula examples in inline and fenced code", async () =>
   }
 });
 
+test("runtime restores multiline formula examples before code highlighting", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const highlighted = [];
+  const escapeHtml = (value) => value.replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const context = vm.createContext({
+    debug() {},
+    console: {warn() {}, error(...args) { throw new Error(args.join(" ")); }},
+    escapeHtml,
+    originalMarkdownSources: new WeakMap(),
+    addCodeHighlight() {},
+    safeSetHTML(element, html) { element.innerHTML = html; },
+    window: {
+      markdownit: MarkdownIt,
+      hljs: {
+        highlight(content) {
+          highlighted.push(content);
+          // Markdown highlighting splits underscores into emphasis spans.
+          return {value: escapeHtml(content).replace(/_([^_]+)_/g, "<em>_$1_</em>")};
+        },
+      },
+    },
+  });
+  vm.runInContext(
+    `${extractFunction(source, "cleanHTML", "protectDisplayMathBlocks")}
+     ${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
+     ${extractFunction(source, "enableMarkdownMath", "escapeHtml")}
+     ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}
+     ${extractFunction(source, "renderMarkdown", "renderMath")}`,
+    context,
+  );
+  const formula = String.raw`\bigl((QQ^\top)(QQ^\top)\bigr) = QQ^\top`;
+  for (const fence of ["```", "~~~~"]) {
+    for (const [left, right] of [["$$", "$$"], ["\\[", "\\]"]]) {
+      highlighted.length = 0;
+      const example = `${left}\n${formula}\n${right}\n`;
+      const element = {
+        id: "back", dataset: {},
+        querySelectorAll() { return []; },
+        innerHTML: `$$\nP^2 = P\n$$\n\nMarkdown：\n${fence}markdown\n${example}${fence}\n\n**后文**`,
+      };
+      context.renderMarkdown(element);
+      assert.equal(element.dataset.markdownProcessed, "true");
+      assert.deepEqual(highlighted, [example]);
+      assert.match(element.innerHTML, /\$\$\nP\^2 = P\n\$\$/);
+      assert.match(element.innerHTML, /<strong>后文<\/strong>/);
+      assert.doesNotMatch(element.innerHTML, /ANKI|DISPLAY|MATH_BLOCK/);
+      assert.ok(element.innerHTML.includes(example));
+    }
+  }
+  context.window.hljs = undefined;
+  const fallback = {
+    id: "back", dataset: {}, querySelectorAll() { return []; },
+    innerHTML: "```markdown\n$$\nx < y &amp; <script>alert(1)</script>\n$$\n```",
+  };
+  context.renderMarkdown(fallback);
+  assert.ok(fallback.innerHTML.includes("$$\nx &lt; y &amp; &lt;script&gt;alert(1)&lt;/script&gt;\n$$"));
+  assert.doesNotMatch(fallback.innerHTML, /<script>|&amp;amp;|ANKI_MD/);
+});
+
 test("runtime preserves Markdown between separate formulas and multiline math", async () => {
   const render = await createMathRenderer();
   const input = "$$a*b*c$$\n\n**between**\n\n## Heading\n\n$$x*y*z$$\n\n$$\na*b*c + x_{i_j_k}\n$$";
@@ -1062,7 +1123,7 @@ test("runtime enables math parsing before Markdown rendering", async () => {
   assert.match(source, /left:\s*"\\\\\[",\s*right:\s*"\\\\\]"/);
   assert.match(source, /enableMarkdownMath\(md\)/);
   assert.match(source, /protectDisplayMathBlocks\([\s\S]*cleanHTML\(original\)/);
-  assert.match(source, /restoreDisplayMathBlocks\(\s*md\.render\(text\)/);
+  assert.match(source, /restoreDisplayMathBlocks\(\s*md\.render\(text,/);
 });
 
 test("code copy reports the real Anki-compatible clipboard result", async () => {
