@@ -841,7 +841,7 @@
       // Optional, public prefixes; preserve input order within each group.
       const groups = {todo: [], content: [], source: []};
       tags.forEach((tag) => {
-        const kind = /^todo::.+/i.test(tag)
+        const kind = /^todo(?:::.+)?$/i.test(tag)
           ? "todo"
           : /^source::.+/i.test(tag)
             ? "source"

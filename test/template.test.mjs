@@ -168,14 +168,14 @@ test("tag prefixes group stably, preserve full text, and survive front-side reus
   assert.equal(sourceRow.children.length, 2);
   const pills = container.children.flatMap((child) => child === sourceRow ? child.children : [child]);
   assert.deepEqual(pills.map((pill) => pill.textContent), [
-    "todo::缺少正面", "TODO::check", "todo::<check>",
+    "todo::缺少正面", "TODO::check", "todo", "todo::<check>",
     "数学::微积分", "clipboard_history", "md_to_anki", "no_separator",
-    "resource::book", "todo", "source::",
+    "resource::book", "source::",
     "source::OtherTool::book::chapter", "SOURCE::AHK::text",
   ]);
   assert.deepEqual(pills.map((pill) => pill.dataset.kind), [
-    "todo", "todo", "todo", "content", "content", "content", "content",
-    "content", "content", "content", "source", "source",
+    "todo", "todo", "todo", "todo", "content", "content", "content", "content",
+    "content", "content", "source", "source",
   ]);
   assert.deepEqual(container.children.filter((pill) => pill.dataset.groupStart).map((pill) => pill.textContent), [
     "数学::微积分",
