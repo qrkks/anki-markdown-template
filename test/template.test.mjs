@@ -75,6 +75,11 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
     /\.markdown-basic-content \.code-lang-label:focus-visible/,
   );
   assert.match(styling, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(styling, /--mb-mobile-font-size:\s*23px/);
+  assert.match(
+    styling,
+    /@media \(max-width: 600px\)[\s\S]*?\.markdown-basic-tags\s*{[^}]*font-size:\s*0\.85em/,
+  );
   assert.doesNotMatch(styling, /markdown-basic-copy-pulse/);
   assert.match(front, /{{Front}}/);
   assert.match(front, /anki-markdown-template:basic/);

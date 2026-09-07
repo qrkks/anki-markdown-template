@@ -1,5 +1,5 @@
 .card {
-    --mb-mobile-font-size: 22px;
+    --mb-mobile-font-size: 23px;
     --mb-background: #ffffff;
     --mb-foreground: #202124;
     --mb-muted: #667085;
@@ -342,6 +342,10 @@
 
     .markdown-basic-content {
         font-size: var(--mb-mobile-font-size);
+    }
+
+    .markdown-basic-tags {
+        font-size: 0.85em;
     }
 
     .markdown-basic-content th,
