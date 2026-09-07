@@ -839,6 +839,230 @@
     });
   }
 
+  function getBasicOutlineEntries(container) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((heading) => ({
+        heading,
+        level: Number(heading.tagName.slice(1)),
+        title: (heading.textContent || "").replace(/\s+/g, " ").trim(),
+      }))
+      .filter((entry) => entry.title);
+  }
+
+  function enhanceBasicOutline() {
+    const cleanupKey = "ankiMarkdownBasicOutlineCleanup";
+    if (typeof window[cleanupKey] === "function") {
+      window[cleanupKey]();
+      delete window[cleanupKey];
+    }
+
+    const content = document.querySelector("[data-markdown-outline]");
+    const entries = getBasicOutlineEntries(content);
+    if (!content || !entries.length) return;
+
+    const headings = entries.map((entry) => entry.heading);
+    const reservedIds = new Set(
+      Array.from(document.querySelectorAll("[id]"))
+        .filter((element) => !headings.includes(element))
+        .map((element) => element.id),
+    );
+    entries.forEach((entry, index) => {
+      let id = entry.heading.id;
+      if (!id || reservedIds.has(id)) {
+        const base = `markdown-basic-answer-heading-${index + 1}`;
+        id = base;
+        let suffix = 2;
+        while (reservedIds.has(id)) {
+          id = `${base}-${suffix}`;
+          suffix += 1;
+        }
+        entry.heading.id = id;
+      }
+      reservedIds.add(id);
+      entry.id = id;
+    });
+
+    const outline = document.createElement("nav");
+    outline.className = "markdown-basic-outline";
+    outline.dataset.open = "false";
+    outline.setAttribute("aria-label", "Back outline");
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "markdown-basic-outline-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", "markdown-basic-outline-panel");
+    toggle.innerHTML = [
+      '<svg viewBox="0 0 24 24" aria-hidden="true">',
+      '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />',
+      "</svg>",
+      "<span>目录</span>",
+      `<span class="markdown-basic-outline-count">${entries.length}</span>`,
+    ].join("");
+
+    const scrim = document.createElement("button");
+    scrim.type = "button";
+    scrim.className = "markdown-basic-outline-scrim";
+    scrim.tabIndex = -1;
+    scrim.setAttribute("aria-label", "关闭目录");
+    scrim.setAttribute("aria-hidden", "true");
+
+    const panel = document.createElement("section");
+    panel.id = "markdown-basic-outline-panel";
+    panel.className = "markdown-basic-outline-panel";
+    panel.setAttribute("aria-label", "背面目录");
+
+    const panelHeader = document.createElement("header");
+    panelHeader.className = "markdown-basic-outline-header";
+    const panelTitle = document.createElement("strong");
+    panelTitle.textContent = "目录";
+    const panelCount = document.createElement("span");
+    panelCount.className = "markdown-basic-outline-total";
+    panelCount.textContent = `${entries.length} 个标题`;
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "markdown-basic-outline-close";
+    close.setAttribute("aria-label", "关闭目录");
+    close.innerHTML = [
+      '<svg viewBox="0 0 24 24" aria-hidden="true">',
+      '<path d="M6 6l12 12M18 6 6 18" />',
+      "</svg>",
+    ].join("");
+    panelHeader.append(panelTitle, panelCount, close);
+
+    const list = document.createElement("ol");
+    list.className = "markdown-basic-outline-list";
+    const links = [];
+    entries.forEach((entry) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.className = "markdown-basic-outline-link";
+      link.dataset.level = String(entry.level);
+      link.href = `#${entry.id}`;
+      link.textContent = entry.title;
+      link.title = entry.title;
+      item.appendChild(link);
+      list.appendChild(item);
+      links.push(link);
+    });
+    panel.append(panelHeader, list);
+    outline.append(scrim, toggle, panel);
+    document.body.appendChild(outline);
+    document.body.classList.add("markdown-basic-has-outline");
+
+    const wideOutline = window.matchMedia("(min-width: 1280px)");
+    const syncPanelAvailability = () => {
+      const unavailable =
+        !wideOutline.matches && outline.dataset.open !== "true";
+      if (unavailable) {
+        panel.setAttribute("aria-hidden", "true");
+        panel.setAttribute("inert", "");
+      } else {
+        panel.removeAttribute("aria-hidden");
+        panel.removeAttribute("inert");
+      }
+    };
+    const setOpen = (open, restoreFocus = false) => {
+      outline.dataset.open = String(open);
+      toggle.setAttribute("aria-expanded", String(open));
+      syncPanelAvailability();
+      if (open) close.focus();
+      else if (restoreFocus) toggle.focus();
+    };
+    const onWideOutlineChange = () => {
+      outline.dataset.open = "false";
+      toggle.setAttribute("aria-expanded", "false");
+      syncPanelAvailability();
+    };
+    if (typeof wideOutline.addEventListener === "function") {
+      wideOutline.addEventListener("change", onWideOutlineChange);
+    } else {
+      wideOutline.addListener(onWideOutlineChange);
+    }
+    syncPanelAvailability();
+    const prefersReducedMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    links.forEach((link, index) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        setOpen(false);
+        entries[index].heading.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    });
+    toggle.addEventListener("click", () => setOpen(true));
+    close.addEventListener("click", () => setOpen(false, true));
+    scrim.addEventListener("click", () => setOpen(false, true));
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && outline.dataset.open === "true") {
+        event.preventDefault();
+        setOpen(false, true);
+        return;
+      }
+      if (event.key === "Tab" && outline.dataset.open === "true") {
+        const focusable = [close, ...links];
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    let activeIndex = -1;
+    const updateActiveLink = () => {
+      frame = 0;
+      let nextIndex = 0;
+      entries.forEach((entry, index) => {
+        if (entry.heading.getBoundingClientRect().top <= 96) nextIndex = index;
+      });
+      const root = document.documentElement;
+      if (window.innerHeight + window.scrollY >= root.scrollHeight - 4) {
+        nextIndex = entries.length - 1;
+      }
+      if (nextIndex === activeIndex) return;
+      links.forEach((link, index) => {
+        if (index === nextIndex) link.setAttribute("aria-current", "location");
+        else link.removeAttribute("aria-current");
+      });
+      activeIndex = nextIndex;
+    };
+    let frame = 0;
+    const scheduleActiveLinkUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateActiveLink);
+    };
+    window.addEventListener("scroll", scheduleActiveLinkUpdate, {passive: true});
+    window.addEventListener("resize", scheduleActiveLinkUpdate);
+    updateActiveLink();
+
+    window[cleanupKey] = () => {
+      window.removeEventListener("scroll", scheduleActiveLinkUpdate);
+      window.removeEventListener("resize", scheduleActiveLinkUpdate);
+      document.removeEventListener("keydown", onKeyDown);
+      if (typeof wideOutline.removeEventListener === "function") {
+        wideOutline.removeEventListener("change", onWideOutlineChange);
+      } else {
+        wideOutline.removeListener(onWideOutlineChange);
+      }
+      if (frame) window.cancelAnimationFrame(frame);
+      document.body.classList.remove("markdown-basic-has-outline");
+      outline.remove();
+    };
+  }
+
   function renderMarkdown(element) {
     const el = element;
     const target = el.id ? `#${el.id}` : "[data-markdown]";
@@ -1439,6 +1663,7 @@
       }
 
       renderAll();
+      enhanceBasicOutline();
       debug("✅ Markdown 渲染器初始化完成");
     } catch (e) {
       console.error("❌ Initialization failed:", e);

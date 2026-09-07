@@ -105,13 +105,13 @@ def build_package(
     output: Path,
     version: str,
     timestamp: int,
-) -> tuple[str, str]:
+) -> dict[str, str]:
     model = genanki.Model(
         config["modelId"],
         config["noteTypeName"],
         fields=[
-            {"name": "Front", "id": config["fieldIds"]["Front"]},
-            {"name": "Back", "id": config["fieldIds"]["Back"]},
+            {"name": name, "id": field_id}
+            for name, field_id in config["fieldIds"].items()
         ],
         templates=[
             {
@@ -124,10 +124,12 @@ def build_package(
         css=styling,
     )
     deck = genanki.Deck(config["deckId"], config["deckName"])
-    demo_front = """# Markdown Basic
+    demo_front = """What can this card render?"""
+    demo_back = rf"""# Renderer features
 
-What can this card render?"""
-    demo_back = rf"""It renders Markdown with local, offline-capable resources.
+It renders Markdown with local, offline-capable resources.
+
+## Supported content
 
 - **Formatted text** and tables
 - Fenced code with syntax highlighting
@@ -151,9 +153,13 @@ flowchart LR
 ```
 
 Template version: `{version}`"""
+    demo_fields = {
+        "Front": demo_front,
+        "Back": demo_back,
+    }
     note = genanki.Note(
         model=model,
-        fields=[demo_front, demo_back],
+        fields=[demo_fields[name] for name in config["fieldIds"]],
         tags=["markdown-basic", "demo"],
         guid=genanki.guid_for(config["guidSeed"]),
     )
@@ -165,7 +171,7 @@ Template version: `{version}`"""
     output.unlink(missing_ok=True)
     package.write_to_file(str(output), timestamp=float(timestamp))
     normalize_archive(output, timestamp)
-    return demo_front, demo_back
+    return demo_fields
 
 
 def verify_package(
@@ -176,8 +182,7 @@ def verify_package(
     styling: str,
     media_files: list[Path],
     output: Path,
-    demo_front: str,
-    demo_back: str,
+    demo_fields: dict[str, str],
 ) -> None:
     expected_media = {path.name: sha256(path) for path in media_files}
     with ZipFile(output) as archive:
@@ -229,7 +234,10 @@ def verify_package(
             if len(note_ids) != 1:
                 raise AssertionError("示例牌组必须恰好包含一条 Markdown Basic 笔记。")
             imported_note = collection.get_note(note_ids[0])
-            if imported_note["Front"] != demo_front or imported_note["Back"] != demo_back:
+            if any(
+                imported_note[name] != value
+                for name, value in demo_fields.items()
+            ):
                 raise AssertionError("导入后的示例内容与构建输入不一致。")
 
             imported_media = {
@@ -260,7 +268,7 @@ def main() -> None:
     if not media_files or any(not path.name.startswith("_") for path in media_files):
         raise ValueError("Release 媒体目录必须包含以下划线开头的受管资源。")
 
-    demo_front, demo_back = build_package(
+    demo_fields = build_package(
         config=config,
         front=front,
         back=back,
@@ -277,8 +285,7 @@ def main() -> None:
         styling=styling,
         media_files=media_files,
         output=args.output,
-        demo_front=demo_front,
-        demo_back=demo_back,
+        demo_fields=demo_fields,
     )
     print(
         f"APKG 验证通过：{config['noteTypeName']} / "

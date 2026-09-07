@@ -8,6 +8,7 @@ All notable changes to the published Anki templates are documented here.
 
 ### Added
 
+- Added a responsive floating outline built from every heading in `Back`. The outline preserves heading levels, highlights the current section, and switches from a desktop side panel to an accessible mobile drawer; `Front` remains free-form and does not require a heading.
 - Independently adjustable 22px body text on viewports up to 600px via `--mb-mobile-font-size`, preserving desktop and tag sizes.
 - Optional `todo::` (amber) and `source::` (gray) tag styles in Markdown Basic, with light/dark palettes and stable to-do/content/source grouping on both faces. Source tags occupy a separate centered row below to-do and content tags. Ordinary tags keep their existing style and full names stay visible.
 

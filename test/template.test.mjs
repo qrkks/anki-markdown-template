@@ -98,9 +98,43 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /{{FrontSide}}/);
   assert.match(back, /id=["']answer["']/);
   assert.match(back, /{{Back}}/);
-  assert.match(back, /data-markdown/);
+  assert.match(back, /data-markdown-outline/);
+  assert.match(back, /function enhanceBasicOutline\(\)/);
+  assert.match(back, /querySelectorAll\("h1,h2,h3,h4,h5,h6"\)/);
+  assert.match(back, /aria-current", "location"/);
+  assert.match(styling, /\.markdown-basic-outline-panel/);
+  assert.match(styling, /@media \(min-width: 1280px\)/);
+  assert.match(styling, /min-height:\s*48px/);
+  assert.match(styling, /env\(safe-area-inset-bottom\)/);
   assert.doesNotMatch(back, /id=["']back["']/);
   assert.match(back, /<script>/);
+});
+
+test("Markdown Basic outline includes every non-empty heading in document order", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const headings = [
+    {tagName: "H1", textContent: "  Overview  "},
+    {tagName: "H2", textContent: "Details\n and examples"},
+    {tagName: "H6", textContent: "Deep note"},
+    {tagName: "H3", textContent: "   "},
+  ];
+  const container = {
+    querySelectorAll(selector) {
+      assert.equal(selector, "h1,h2,h3,h4,h5,h6");
+      return headings;
+    },
+  };
+  const context = vm.createContext({container, result: null});
+  vm.runInContext(
+    `${extractFunction(source, "getBasicOutlineEntries", "enhanceBasicOutline")}
+     result = getBasicOutlineEntries(container).map(({level, title}) => ({level, title}));`,
+    context,
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(context.result)), [
+    {level: 1, title: "Overview"},
+    {level: 2, title: "Details and examples"},
+    {level: 6, title: "Deep note"},
+  ]);
 });
 
 test("tag prefixes group stably, preserve full text, and survive front-side reuse", async () => {
@@ -179,6 +213,8 @@ test("release identities are stable and unambiguous", async () => {
   assert.equal(config.cardTemplateName, "Basic");
   assert.equal(config.deckName, "Markdown Basic Demo");
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
+  assert.deepEqual(Object.keys(config.fieldIds), BASIC_REQUIRED_FIELDS);
+  assert.deepEqual(BASIC_REQUIRED_FIELDS, ["Front", "Back"]);
   assert.equal(packageJson.version, "0.2.0");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
   assert.match(
@@ -507,7 +543,6 @@ test("Markdown Basic updater validates identity and updates only Basic", async (
       ),
     /为避免覆盖同名模板/,
   );
-
   const actions = [];
   const templates = {
     [BASIC_TEMPLATE_NAME]: {Front: "old front", Back: "old back"},
