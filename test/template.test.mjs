@@ -98,6 +98,55 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /<script>/);
 });
 
+test("tag prefixes group stably, preserve full text, and survive front-side reuse", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const input = [
+    "source::OtherTool::book::chapter", "数学::微积分", "todo::缺少正面",
+    "clipboard_history", "SOURCE::AHK::text", "TODO::check", "md_to_anki",
+    "no_separator", "resource::book", "todo", "source::", "todo::<check>",
+  ];
+  const container = {
+    textContent: input.join(" \n "), dataset: {}, children: [],
+    setAttribute() {},
+    appendChild(child) { this.children.push(child); },
+  };
+  const document = {
+    querySelectorAll() { return [container]; },
+    createElement() {
+      return {
+        dataset: {}, children: [],
+        setAttribute(name, value) { this[name] = value; },
+        appendChild(child) { this.children.push(child); },
+      };
+    },
+  };
+  const context = vm.createContext({document});
+  vm.runInContext(extractFunction(source, "enhanceBasicTags", "renderMarkdown"), context);
+  vm.runInContext("enhanceBasicTags()", context);
+  const sourceRow = container.children.at(-1);
+  assert.equal(sourceRow.className, "markdown-basic-tag-sources");
+  assert.equal(sourceRow.role, "presentation");
+  assert.equal(sourceRow.children.length, 2);
+  const pills = container.children.flatMap((child) => child === sourceRow ? child.children : [child]);
+  assert.deepEqual(pills.map((pill) => pill.textContent), [
+    "todo::缺少正面", "TODO::check", "todo::<check>",
+    "数学::微积分", "clipboard_history", "md_to_anki", "no_separator",
+    "resource::book", "todo", "source::",
+    "source::OtherTool::book::chapter", "SOURCE::AHK::text",
+  ]);
+  assert.deepEqual(pills.map((pill) => pill.dataset.kind), [
+    "todo", "todo", "todo", "content", "content", "content", "content",
+    "content", "content", "content", "source", "source",
+  ]);
+  assert.deepEqual(container.children.filter((pill) => pill.dataset.groupStart).map((pill) => pill.textContent), [
+    "数学::微积分",
+  ]);
+  assert.ok(pills.every((pill) => pill.role === "listitem"));
+  const firstPass = [...container.children];
+  vm.runInContext("enhanceBasicTags()", context);
+  assert.deepEqual(container.children, firstPass);
+});
+
 test("release identities are stable and unambiguous", async () => {
   const [
     configText,

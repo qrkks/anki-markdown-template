@@ -771,12 +771,37 @@
 
       container.textContent = "";
       container.setAttribute("role", "list");
+      // Optional, public prefixes; preserve input order within each group.
+      const groups = {todo: [], content: [], source: []};
       tags.forEach((tag) => {
-        const pill = document.createElement("span");
-        pill.className = "markdown-basic-tag";
-        pill.setAttribute("role", "listitem");
-        pill.textContent = tag;
-        container.appendChild(pill);
+        const kind = /^todo::.+/i.test(tag)
+          ? "todo"
+          : /^source::.+/i.test(tag)
+            ? "source"
+            : "content";
+        groups[kind].push(tag);
+      });
+      let previousKind;
+      Object.entries(groups).forEach(([kind, group]) => {
+        let target = container;
+        if (kind === "source" && group.length) {
+          target = document.createElement("span");
+          target.className = "markdown-basic-tag-sources";
+          target.setAttribute("role", "presentation");
+          container.appendChild(target);
+        }
+        group.forEach((tag) => {
+          const pill = document.createElement("span");
+          pill.className = "markdown-basic-tag";
+          pill.dataset.kind = kind;
+          if (previousKind && previousKind !== kind && kind !== "source") {
+            pill.dataset.groupStart = "true";
+          }
+          pill.setAttribute("role", "listitem");
+          pill.textContent = tag;
+          target.appendChild(pill);
+          previousKind = kind;
+        });
       });
       container.dataset.enhanced = "true";
     });

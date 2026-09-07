@@ -29,6 +29,23 @@ Open **Tools → Manage Note Types → Cards...** in Anki, then copy the three g
 
 `styling.css` contains CSS only. The build script embeds JavaScript in the front and back templates, so the template no longer depends on scripts running from Anki's Styling section.
 
+### Mobile text size
+
+At viewport widths of 600px or less, Markdown Basic uses **22px body text**. Desktop body text stays at 20px; tag sizes are unchanged. In Anki's **Cards… → Styling**, adjust `--mb-mobile-font-size: 22px;` near the top to change the narrow-screen body size independently. Headings and other relative text sizes scale with the body. This rule also applies to narrow desktop windows.
+
+### Optional tag conventions
+
+Markdown Basic keeps ordinary tags in their existing style. Opt into two visual groups by using these prefixes (matched case-insensitively):
+
+- `todo::` with a name, such as `todo::缺少正面`: amber text and a pale amber background for notes that need attention. Remove the tag manually after completing the work; the template does not inspect or edit note fields.
+- `source::` with a name, such as `source::AHK::text`: gray text and a gray background for provenance. Any tool name and nesting depth are supported.
+
+On both card faces, tags appear in this order: **to do → content → source**. To-do and content tags share the first row; source tags start on a separate row below, with a small gap. Both rows stay centered and wrap naturally on narrow screens. Each group preserves the order supplied by Anki. Full tag names remain visible, so meaning does not depend on color. Light and dark modes use matching palettes.
+
+Example: `todo::缺少正面` · `数学::微积分` · `source::AHK::text`.
+
+This is an optional display convention, not an AHK-specific tag list. It does not rename existing tags or change Anki's Browser tag sidebar. Users without these prefixes see the same tag style as before.
+
 ### Custom fields
 
 The public template marks Markdown regions with `data-markdown`. The renderer remains compatible with the legacy `id="front"` and `id="back"` containers. On a complex card, add `data-markdown` only to the fields that need Markdown. One script can process any number of regions on the same card face:

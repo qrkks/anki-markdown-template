@@ -4,6 +4,13 @@
 
 All notable changes to the published Anki templates are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Independently adjustable 22px body text on viewports up to 600px via `--mb-mobile-font-size`, preserving desktop and tag sizes.
+- Optional `todo::` (amber) and `source::` (gray) tag styles in Markdown Basic, with light/dark palettes and stable to-do/content/source grouping on both faces. Source tags occupy a separate centered row below to-do and content tags. Ordinary tags keep their existing style and full names stay visible.
+
 ## [0.2.0] - 2026-09-01
 
 ### Added

@@ -1,4 +1,5 @@
 .card {
+    --mb-mobile-font-size: 22px;
     --mb-background: #ffffff;
     --mb-foreground: #202124;
     --mb-muted: #667085;
@@ -9,6 +10,12 @@
     --mb-tag-background: #7c3aed;
     --mb-tag-border: #6d28d9;
     --mb-tag-foreground: #ffffff;
+    --mb-source-background: #f2f4f7;
+    --mb-source-border: #d0d5dd;
+    --mb-source-foreground: #596273;
+    --mb-todo-background: #fff3d6;
+    --mb-todo-border: #e8c477;
+    --mb-todo-foreground: #805000;
     --mb-code-label-background: #10b981;
     --mb-code-label-hover: #34d399;
     --mb-code-label-active: #059669;
@@ -44,6 +51,12 @@
     --mb-tag-background: rgba(139, 92, 246, 0.24);
     --mb-tag-border: rgba(167, 139, 250, 0.5);
     --mb-tag-foreground: #ede9fe;
+    --mb-source-background: #272b32;
+    --mb-source-border: #454b55;
+    --mb-source-foreground: #b8bec9;
+    --mb-todo-background: #3b2d16;
+    --mb-todo-border: #80622c;
+    --mb-todo-foreground: #f4cc76;
     --mb-code-label-background: #4ade80;
     --mb-code-label-hover: #86efac;
     --mb-code-label-active: #22c55e;
@@ -270,6 +283,7 @@
 }
 
 .markdown-basic-tag {
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     max-width: 100%;
@@ -288,6 +302,32 @@
     opacity: 0.78;
 }
 
+.markdown-basic-tag[data-kind="source"] {
+    color: var(--mb-source-foreground);
+    background: var(--mb-source-background);
+    border-color: var(--mb-source-border);
+}
+
+.markdown-basic-tag-sources {
+    display: flex;
+    flex: 0 0 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4em;
+    min-width: 0;
+}
+
+.markdown-basic-tag[data-kind="todo"] {
+    color: var(--mb-todo-foreground);
+    background: var(--mb-todo-background);
+    border-color: var(--mb-todo-border);
+}
+
+.markdown-basic-tag[data-group-start="true"] {
+    margin-inline-start: 0.35em;
+    max-width: calc(100% - 0.35em);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .markdown-basic-content .code-lang-label {
         transition: none;
@@ -298,6 +338,10 @@
     .card {
         padding: 16px;
         font-size: 18px;
+    }
+
+    .markdown-basic-content {
+        font-size: var(--mb-mobile-font-size);
     }
 
     .markdown-basic-content th,
