@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
@@ -13,7 +15,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tag:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.2 --activate
+      - name: Check explicit release intent
+        id: intent
+        shell: bash
+        env:
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
+          tag="v${version}"
+          first_line="${HEAD_MESSAGE%%$'\n'*}"
+          if [ "$first_line" = "chore: release ${tag}" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify release before tagging
+        if: steps.intent.outputs.release == 'true'
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          test -f "docs/releases/${{ steps.intent.outputs.tag }}.md"
+          pnpm run check
+      - name: Create and push release tag
+        if: steps.intent.outputs.release == 'true'
+        shell: bash
+        run: |
+          tag="${{ steps.intent.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists; nothing to do."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "$tag"
+
   release:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
