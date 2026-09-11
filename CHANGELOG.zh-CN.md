@@ -6,11 +6,20 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-11
+
 ### 新增
 
 - 根据 `Back` 中的全部标题生成响应式浮动大纲。大纲保留标题层级、高亮当前章节，并在桌面侧栏和无障碍移动端抽屉之间自动切换；`Front` 继续保持自由格式且无需标题。
 - 宽度不超过 600px 时默认使用 22px 正文，可通过 `--mb-mobile-font-size` 独立调整；桌面及标签字号保持原样。
 - Markdown Basic 支持可选的 `todo::`（琥珀色）和 `source::`（灰色）标签样式，配套浅色/深色模式；正反面稳定按待处理、内容、来源分组。来源标签单独居中显示在待处理和内容标签下方。普通标签保持原样，完整名称保持可见。
+
+### 修复
+
+- 在生成的不同卡片模板及渲染器重复初始化时，稳定保留 Markdown 源文本和渲染行为。
+- 避免数学公式中的 Markdown 强调语法被误解析为 Markdown 格式。
+- 避免代码高亮块中的显示公式占位符被错误恢复为可执行公式。
+- 将独立的 `todo` 标签正确归入待处理组，同时保持普通标签和来源标签的原有行为。
 
 ## [0.2.0] - 2026-09-01
 
@@ -56,6 +65,7 @@
 - 正确保留多行显示公式并安全解码序列化的 HTML 实体。
 - 改进块引用、代码和引号的渲染行为。
 
+[0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/qrkks/anki-markdown-template/releases/tag/v0.1.0

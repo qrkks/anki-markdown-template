@@ -6,11 +6,20 @@ All notable changes to the published Anki templates are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-11
+
 ### Added
 
 - Added a responsive floating outline built from every heading in `Back`. The outline preserves heading levels, highlights the current section, and switches from a desktop side panel to an accessible mobile drawer; `Front` remains free-form and does not require a heading.
 - Independently adjustable 22px body text on viewports up to 600px via `--mb-mobile-font-size`, preserving desktop and tag sizes.
 - Optional `todo::` (amber) and `source::` (gray) tag styles in Markdown Basic, with light/dark palettes and stable to-do/content/source grouping on both faces. Source tags occupy a separate centered row below to-do and content tags. Ordinary tags keep their existing style and full names stay visible.
+
+### Fixed
+
+- Preserved Markdown source and rendering behavior consistently across generated card templates and repeated renderer initialization.
+- Prevented Markdown emphasis syntax inside math formulas from being interpreted as Markdown formatting.
+- Prevented display-math placeholders inside highlighted code blocks from being restored as live math.
+- Classified a standalone `todo` tag as a to-do tag while preserving the existing behavior for ordinary and source tags.
 
 ## [0.2.0] - 2026-09-01
 
@@ -56,6 +65,7 @@ All notable changes to the published Anki templates are documented here.
 - Preserved multiline display math and decoded serialized HTML entities safely.
 - Improved blockquote, code, and quote rendering behavior.
 
+[0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/qrkks/anki-markdown-template/releases/tag/v0.1.0
