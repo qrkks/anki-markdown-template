@@ -19,10 +19,11 @@ Download `anki-markdown-basic.apkg` from [GitHub Releases](https://github.com/qr
 The package does not modify Anki's built-in `Basic` note type.
 
 On the back, every Markdown heading (`#` through `######`) in `Back` becomes an
-item in a floating outline. Wide desktop windows show the outline beside the
-card; narrower windows and mobile devices use a **目录** button and bottom
-drawer. Clicking an item jumps to that section, and the current section is
-highlighted while scrolling. Cards without back headings do not show outline
+item in a floating outline below fixed **正面** and **背面** entries. Wide desktop
+windows show the outline beside the card; narrower windows and mobile devices
+use a **目录** button and bottom drawer. Clicking an item jumps to that section.
+Scrolling through untitled introductory Back content highlights **背面**, then
+the active heading takes over. Cards without back headings do not show outline
 controls. `Front` does not need to contain a heading.
 
 ### Manual installation

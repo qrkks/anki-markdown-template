@@ -816,9 +816,10 @@
       delete window[cleanupKey];
     }
 
+    const question = document.querySelector(".markdown-basic-question");
     const content = document.querySelector("[data-markdown-outline]");
     const entries = getBasicOutlineEntries(content);
-    if (!content || !entries.length) return;
+    if (!question || !content || !entries.length) return;
 
     const headings = entries.map((entry) => entry.heading);
     const reservedIds = new Set(
@@ -893,7 +894,29 @@
 
     const list = document.createElement("ol");
     list.className = "markdown-basic-outline-list";
-    const links = [];
+    const questionItem = document.createElement("li");
+    questionItem.className = "markdown-basic-outline-question-item";
+    const questionLink = document.createElement("a");
+    questionLink.className = "markdown-basic-outline-link";
+    questionLink.dataset.section = "question";
+    questionLink.href = "#markdown-basic-question";
+    questionLink.textContent = "正面";
+    questionLink.title = "返回正面";
+    questionItem.appendChild(questionLink);
+    list.appendChild(questionItem);
+
+    const answerItem = document.createElement("li");
+    answerItem.className = "markdown-basic-outline-answer-item";
+    const answerLink = document.createElement("a");
+    answerLink.className = "markdown-basic-outline-link";
+    answerLink.dataset.section = "answer";
+    answerLink.href = "#answer";
+    answerLink.textContent = "背面";
+    answerLink.title = "返回背面开头";
+    answerItem.appendChild(answerLink);
+    list.appendChild(answerItem);
+
+    const headingLinks = [];
     entries.forEach((entry) => {
       const item = document.createElement("li");
       const link = document.createElement("a");
@@ -904,7 +927,7 @@
       link.title = entry.title;
       item.appendChild(link);
       list.appendChild(item);
-      links.push(link);
+      headingLinks.push(link);
     });
     panel.append(panelHeader, list);
     outline.append(scrim, toggle, panel);
@@ -945,14 +968,25 @@
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    links.forEach((link, index) => {
+    const scrollToOutlineTarget = (target) => {
+      setOpen(false);
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    };
+    questionLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      scrollToOutlineTarget(question);
+    });
+    answerLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      scrollToOutlineTarget(content);
+    });
+    headingLinks.forEach((link, index) => {
       link.addEventListener("click", (event) => {
         event.preventDefault();
-        setOpen(false);
-        entries[index].heading.scrollIntoView({
-          behavior: prefersReducedMotion ? "auto" : "smooth",
-          block: "start",
-        });
+        scrollToOutlineTarget(entries[index].heading);
       });
     });
     toggle.addEventListener("click", () => setOpen(true));
@@ -966,7 +1000,7 @@
         return;
       }
       if (event.key === "Tab" && outline.dataset.open === "true") {
-        const focusable = [close, ...links];
+        const focusable = [close, questionLink, answerLink, ...headingLinks];
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         if (event.shiftKey && document.activeElement === first) {
@@ -980,16 +1014,20 @@
     };
     document.addEventListener("keydown", onKeyDown);
 
+    const links = [questionLink, answerLink, ...headingLinks];
     let activeIndex = -1;
     const updateActiveLink = () => {
       frame = 0;
       let nextIndex = 0;
+      if (content.getBoundingClientRect().top <= 96) nextIndex = 1;
       entries.forEach((entry, index) => {
-        if (entry.heading.getBoundingClientRect().top <= 96) nextIndex = index;
+        if (entry.heading.getBoundingClientRect().top <= 96) {
+          nextIndex = index + 2;
+        }
       });
       const root = document.documentElement;
       if (window.innerHeight + window.scrollY >= root.scrollHeight - 4) {
-        nextIndex = entries.length - 1;
+        nextIndex = entries.length + 1;
       }
       if (nextIndex === activeIndex) return;
       links.forEach((link, index) => {

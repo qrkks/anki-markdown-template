@@ -96,13 +96,23 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.doesNotMatch(front, /id=["']front["']/);
   assert.match(front, /<script>/);
   assert.match(back, /{{FrontSide}}/);
+  assert.match(back, /id=["']markdown-basic-question["']/);
   assert.match(back, /id=["']answer["']/);
   assert.match(back, /{{Back}}/);
   assert.match(back, /data-markdown-outline/);
   assert.match(back, /function enhanceBasicOutline\(\)/);
   assert.match(back, /querySelectorAll\("h1,h2,h3,h4,h5,h6"\)/);
   assert.match(back, /aria-current", "location"/);
+  assert.match(back, /questionLink\.textContent = "正面"/);
+  assert.match(back, /questionLink\.href = "#markdown-basic-question"/);
+  assert.match(back, /answerLink\.textContent = "背面"/);
+  assert.match(back, /answerLink\.href = "#answer"/);
+  assert.match(
+    back,
+    /const links = \[questionLink, answerLink, \.\.\.headingLinks\]/,
+  );
   assert.match(styling, /\.markdown-basic-outline-panel/);
+  assert.match(styling, /\.markdown-basic-outline-answer-item/);
   assert.match(styling, /@media \(min-width: 1280px\)/);
   assert.match(styling, /min-height:\s*48px/);
   assert.match(styling, /env\(safe-area-inset-bottom\)/);

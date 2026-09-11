@@ -507,6 +507,12 @@
     padding: 0;
 }
 
+.markdown-basic-outline-list .markdown-basic-outline-answer-item {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--mb-border);
+}
+
 .markdown-basic-outline-link {
     box-sizing: border-box;
     display: flex;
@@ -528,6 +534,12 @@
 .markdown-basic-outline-link[data-level="4"] { padding-left: 48px; }
 .markdown-basic-outline-link[data-level="5"] { padding-left: 60px; }
 .markdown-basic-outline-link[data-level="6"] { padding-left: 72px; }
+
+.markdown-basic-outline-link[data-section="question"],
+.markdown-basic-outline-link[data-section="answer"] {
+    color: var(--mb-foreground);
+    font-weight: 700;
+}
 
 .markdown-basic-outline-link:hover {
     color: var(--mb-foreground);
