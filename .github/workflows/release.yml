@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
       - name: Enable pinned pnpm
         run: |
           corepack enable
@@ -58,13 +61,44 @@ jobs:
         run: |
           tag="${{ steps.intent.outputs.tag }}"
           if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            echo "Tag ${tag} already exists; nothing to do."
+            echo "Tag ${tag} already exists; treating this run as a release retry."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag "$tag"
           git push origin "$tag"
+      - name: Install release build tools
+        if: steps.intent.outputs.release == 'true'
+        run: python -m pip install --disable-pip-version-check uv==0.11.24
+      - name: Build and verify tagged release APKGs
+        if: steps.intent.outputs.release == 'true'
+        shell: bash
+        run: |
+          tag="${{ steps.intent.outputs.tag }}"
+          git fetch --tags --force
+          git checkout "$tag"
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          pnpm run package:all
+      - name: Create GitHub Release from explicit release commit
+        if: steps.intent.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag="${{ steps.intent.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; nothing to do."
+            exit 0
+          fi
+          notes_file="docs/releases/${tag}.md"
+          gh release create "$tag" \
+            release/anki-markdown-basic.apkg \
+            release/anki-english-vocabulary.apkg \
+            release/SHA256SUMS.txt \
+            --verify-tag \
+            --notes-file "$notes_file" \
+            --title "Anki Markdown Template $tag"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
