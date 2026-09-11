@@ -28,7 +28,7 @@
     --mb-outline-hover: #eef2ff;
     --mb-outline-active: #dbeafe;
     --mb-outline-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
-    --mb-outline-scrim: rgba(15, 23, 42, 0.48);
+    --mb-outline-scrim: transparent;
 
     box-sizing: border-box;
     width: min(100%, 760px);
@@ -74,7 +74,7 @@
     --mb-outline-hover: #2d3440;
     --mb-outline-active: #253b63;
     --mb-outline-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
-    --mb-outline-scrim: rgba(0, 0, 0, 0.58);
+    --mb-outline-scrim: transparent;
 }
 
 .markdown-basic-content > :first-child,
@@ -415,7 +415,12 @@
     width: 100%;
     height: 100%;
     padding: 0;
-    background: var(--mb-outline-scrim);
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--mb-outline-scrim) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     opacity: 0;
     pointer-events: none;
     transition: opacity 180ms ease;

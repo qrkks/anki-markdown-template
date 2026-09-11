@@ -113,6 +113,11 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   );
   assert.match(styling, /\.markdown-basic-outline-panel/);
   assert.match(styling, /\.markdown-basic-outline-answer-item/);
+  assert.match(styling, /appearance:\s*none/);
+  assert.match(
+    styling,
+    /background:\s*var\(--mb-outline-scrim\)\s*!important/,
+  );
   assert.match(styling, /@media \(min-width: 1280px\)/);
   assert.match(styling, /min-height:\s*48px/);
   assert.match(styling, /env\(safe-area-inset-bottom\)/);
