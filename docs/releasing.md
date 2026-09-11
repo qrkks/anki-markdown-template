@@ -36,32 +36,74 @@ produces the same package checksum.
 
 ## Publish
 
-Push `main`, create the matching tag, and push the tag:
+The preferred maintainer path is an explicit release commit on `main`. First push the
+prepared release changes and confirm CI is green. Then create an empty commit whose
+first line exactly matches the version in `package.json`:
 
 ```powershell
-git tag -a v0.2.0 -m "Release v0.2.0"
+$version = "0.4.0"
 git push origin main
-git push origin v0.2.0
+git commit --allow-empty -m "chore: release v$version"
+git push origin main
 ```
 
-`.github/workflows/release.yml` rejects a tag that differs from the version in
-`package.json` or has no matching `docs/releases/vX.Y.Z.md`. After checks and isolated
-APKG verification pass, it creates the GitHub Release from that bilingual notes file
-and attaches the APKG and checksum file.
+When `.github/workflows/release.yml` sees `chore: release vX.Y.Z` on `main`, it:
 
-Verify the published artifact independently:
+1. Confirms that `package.json` resolves to the same `vX.Y.Z` tag name.
+2. Requires `docs/releases/vX.Y.Z.md` and runs the full `pnpm run check` suite.
+3. Creates and pushes the tag when it does not already exist.
+4. Checks out that tag, builds and verifies both APKG files reproducibly, and generates
+   `SHA256SUMS.txt`.
+5. Creates the GitHub Release from the bilingual release-notes file and attaches both
+   APKG files plus the checksum manifest.
+
+If the tag already exists, the same explicit release commit is treated as a release
+retry: the workflow keeps the existing tag, rebuilds from that tag, and creates the
+GitHub Release only when it does not already exist.
+
+### Manual tag compatibility path
+
+A manually pushed matching tag remains supported. Use this only after the prepared
+release commit is on `main` and its checks are green:
 
 ```powershell
-gh release view v0.2.0
-gh release download v0.2.0 --pattern "*.apkg" --pattern "SHA256SUMS.txt"
+$version = "0.4.0"
+git tag -a "v$version" -m "Release v$version"
+git push origin main
+git push origin "v$version"
+```
+
+The tag-triggered release job rejects a tag that differs from the version in
+`package.json` or has no matching `docs/releases/vX.Y.Z.md`. After the full checks and
+isolated APKG verification pass, it creates the GitHub Release from that notes file and
+attaches both APKG files and `SHA256SUMS.txt`.
+
+## Verify the published release
+
+Replace the example version with the version just published:
+
+```powershell
+$version = "0.4.0"
+gh release view "v$version"
+gh release download "v$version" --pattern "*.apkg" --pattern "SHA256SUMS.txt"
 Get-FileHash -Algorithm SHA256 .\anki-markdown-basic.apkg
 Get-FileHash -Algorithm SHA256 .\anki-english-vocabulary.apkg
 ```
 
-## Rollback
+Confirm that the GitHub Release is neither a draft nor a prerelease and that it contains
+all three expected assets:
 
-If validation fails before the tag is pushed, do not tag the commit. If the workflow
-fails, no Release is created. If a published artifact is later found to be invalid,
-remove the Release, remove the remote tag, fix the issue on `main`, and publish a new
-patch version. Deleting a published Release or tag is destructive and must be explicitly
-approved before running those commands.
+- `anki-markdown-basic.apkg`
+- `anki-english-vocabulary.apkg`
+- `SHA256SUMS.txt`
+
+## Rollback and retry
+
+If validation fails before a tag is created, fix the issue on `main` and do not publish.
+If an explicit release run creates the tag but fails before creating the GitHub Release,
+fix the workflow or release preparation without moving the existing tag, then push a new
+empty `chore: release vX.Y.Z` commit to retry the release from that tag.
+
+If a published artifact is later found to be invalid, prefer fixing the problem and
+publishing a new patch version. Deleting an existing GitHub Release or remote tag is a
+destructive operation and must be explicitly approved before running those commands.

@@ -37,7 +37,7 @@
 
 ### 手机正文字号
 
-视口宽度不超过 600px 时，Markdown Basic 使用 **22px 正文**；桌面正文仍为 20px，标签字号保持原样。在 Anki 的 **卡片… → 样式** 中，调整靠前的 `--mb-mobile-font-size: 22px;`，即可单独修改窄屏正文字号。标题等相对字号会随正文一起缩放。此规则也适用于较窄的桌面窗口。
+视口宽度不超过 600px 时，Markdown Basic 使用 **23px 正文**；桌面正文仍为 20px，标签字号保持原样。在 Anki 的 **卡片… → 样式** 中，调整靠前的 `--mb-mobile-font-size: 23px;`，即可单独修改窄屏正文字号。标题等相对字号会随正文一起缩放。此规则也适用于较窄的桌面窗口。
 
 ### 可选的标签约定
 
@@ -111,6 +111,8 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 ## 功能
 
 - Markdown 标题、列表、链接、表格和强调
+- 根据 Markdown Basic 背面标题生成的响应式浮动大纲
+- 可选的 `todo::` / `source::` 标签分组，并适配浅色和深色模式
 - fenced code block 与行内代码
 - highlight.js 代码高亮和点击复制
 - KaTeX 行内公式 `$...$`、`\(...\)` 与块级公式 `$$...$$`、`\[...\]`
@@ -223,9 +225,7 @@ pnpm run package:all
 Python 库导入到隔离的临时 collection，核对模型、字段、模板 ID、CSS、示例笔记、
 生成卡片和全部媒体哈希。它不会访问或修改用户的 Anki profile。
 
-Tag `vX.Y.Z` 会触发 GitHub Actions；只有 tag 与 `package.json` 版本一致、完整检查和
-APKG 隔离导入验证均通过时，工作流才会创建 GitHub Release。完整流程和回滚说明见
-[`docs/releasing.md`](docs/releasing.md)。
+常规维护者发布时，在 `main` 推送一条明确的 `chore: release vX.Y.Z` 提交。Release workflow 会校验对应的 `package.json` 版本和双语发布说明文件，运行完整检查，在需要时创建 tag，再从该 tag 构建 APKG 并创建 GitHub Release。手动推送匹配的 `vX.Y.Z` tag 仍作为兼容路径保留。完整流程、重试和回滚说明见 [`docs/releasing.md`](docs/releasing.md)。
 
 ### 本地更新 Markdown Basic
 

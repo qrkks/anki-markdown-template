@@ -38,7 +38,7 @@ Open **Tools → Manage Note Types → Cards...** in Anki, then copy the three g
 
 ### Mobile text size
 
-At viewport widths of 600px or less, Markdown Basic uses **22px body text**. Desktop body text stays at 20px; tag sizes are unchanged. In Anki's **Cards… → Styling**, adjust `--mb-mobile-font-size: 22px;` near the top to change the narrow-screen body size independently. Headings and other relative text sizes scale with the body. This rule also applies to narrow desktop windows.
+At viewport widths of 600px or less, Markdown Basic uses **23px body text**. Desktop body text stays at 20px; tag sizes are unchanged. In Anki's **Cards… → Styling**, adjust `--mb-mobile-font-size: 23px;` near the top to change the narrow-screen body size independently. Headings and other relative text sizes scale with the body. This rule also applies to narrow desktop windows.
 
 ### Optional tag conventions
 
@@ -105,6 +105,8 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 ## Features
 
 - Markdown headings, lists, links, tables, and emphasis
+- Responsive floating outline generated from headings on the back of Markdown Basic cards
+- Optional `todo::` / `source::` tag grouping with light and dark mode styles
 - Fenced code blocks and inline code
 - highlight.js syntax highlighting and click-to-copy
 - KaTeX inline math with `$...$` and `\(...\)`, plus display math with `$$...$$` and `\[...\]`
@@ -201,7 +203,7 @@ pnpm run package:all
 
 The command downloads and verifies 30 pinned resources, then creates `release/anki-markdown-basic.apkg`, `release/anki-english-vocabulary.apkg`, and `release/SHA256SUMS.txt`. Both packages are imported into isolated temporary collections using the pinned official Anki 25.09.4 Python library. The validation checks model, field, and template IDs; CSS; example notes; generated cards; and every media hash. It never accesses or modifies the user's Anki profile.
 
-A `vX.Y.Z` tag triggers GitHub Actions. The workflow creates a GitHub Release only when the tag matches the version in `package.json` and all checks and isolated APKG imports pass. See [`docs/releasing.md`](docs/releasing.md) for the complete process and rollback instructions.
+For normal maintainer releases, push an explicit `chore: release vX.Y.Z` commit on `main`. The Release workflow verifies the matching `package.json` version and bilingual release-notes file, runs the full checks, creates the tag if needed, builds the APKG files from that tag, and creates the GitHub Release. Manually pushing a matching `vX.Y.Z` tag remains supported as a compatibility path. See [`docs/releasing.md`](docs/releasing.md) for the complete process, retries, and rollback instructions.
 
 ### Update Markdown Basic locally
 
