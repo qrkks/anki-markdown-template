@@ -215,7 +215,7 @@ test("release identities are stable and unambiguous", async () => {
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
   assert.deepEqual(Object.keys(config.fieldIds), BASIC_REQUIRED_FIELDS);
   assert.deepEqual(BASIC_REQUIRED_FIELDS, ["Front", "Back"]);
-  assert.equal(packageJson.version, "0.2.0");
+  assert.equal(packageJson.version, "0.3.0");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
   assert.match(
     packageJson.scripts["package:vocabulary"],
@@ -1151,7 +1151,6 @@ test("runtime restores multiline formula examples before code highlighting", asy
       hljs: {
         highlight(content) {
           highlighted.push(content);
-          // Markdown highlighting splits underscores into emphasis spans.
           return {value: escapeHtml(content).replace(/_([^_]+)_/g, "<em>_$1_</em>")};
         },
       },
