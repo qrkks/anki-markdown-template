@@ -103,9 +103,9 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /function enhanceBasicOutline\(\)/);
   assert.match(back, /querySelectorAll\("h1,h2,h3,h4,h5,h6"\)/);
   assert.match(back, /aria-current", "location"/);
-  assert.match(back, /questionLink\.textContent = "正面"/);
+  assert.match(back, /questionLink\.textContent = messages\.front/);
   assert.match(back, /questionLink\.href = "#markdown-basic-question"/);
-  assert.match(back, /answerLink\.textContent = "背面"/);
+  assert.match(back, /answerLink\.textContent = messages\.back/);
   assert.match(back, /answerLink\.href = "#answer"/);
   assert.match(
     back,
@@ -204,6 +204,32 @@ test("Markdown Basic outline uses each KaTeX source formula only once", async ()
     context,
   );
   assert.equal(context.result, "A是向量的话，AA^T的对角线就是A^TA吗？");
+});
+
+test("Markdown Basic outline follows the system language when initialized", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({result: null});
+  vm.runInContext(
+    `${extractFunction(source, "getBasicOutlineMessages", "enhanceBasicOutline")}
+     const zh = getBasicOutlineMessages("zh-CN");
+     const en = getBasicOutlineMessages("en-US");
+     const fallback = getBasicOutlineMessages("");
+     result = {
+       zh: [zh.outline, zh.front, zh.back, zh.headingCount(2), zh.closeOutline],
+       en: [en.outline, en.front, en.back, en.headingCount(1), en.headingCount(2), en.closeOutline],
+       fallback: fallback.outline,
+     };`,
+    context,
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(context.result)), {
+    zh: ["目录", "正面", "背面", "2 个标题", "关闭目录"],
+    en: ["Outline", "Front", "Back", "1 heading", "2 headings", "Close outline"],
+    fallback: "Outline",
+  });
+  assert.match(
+    source,
+    /if \(!question \|\| !content \|\| !entries\.length\) return;[\s\S]*?window\.navigator\?\.languages\?\.\[0\]/,
+  );
 });
 
 test("tag prefixes group stably, preserve full text, and survive front-side reuse", async () => {

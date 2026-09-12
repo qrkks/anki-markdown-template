@@ -909,6 +909,33 @@
       .filter((entry) => entry.title);
   }
 
+  function getBasicOutlineMessages(locale) {
+    if (/^zh(?:[-_]|$)/i.test(locale || "")) {
+      return {
+        outline: "目录",
+        openOutline: "打开目录",
+        closeOutline: "关闭目录",
+        backOutline: "背面目录",
+        front: "正面",
+        frontTitle: "返回正面",
+        back: "背面",
+        backTitle: "返回背面开头",
+        headingCount: (count) => `${count} 个标题`,
+      };
+    }
+    return {
+      outline: "Outline",
+      openOutline: "Open outline",
+      closeOutline: "Close outline",
+      backOutline: "Back outline",
+      front: "Front",
+      frontTitle: "Return to front",
+      back: "Back",
+      backTitle: "Return to start of back",
+      headingCount: (count) => `${count} heading${count === 1 ? "" : "s"}`,
+    };
+  }
+
   function enhanceBasicOutline() {
     const cleanupKey = "ankiMarkdownBasicOutlineCleanup";
     if (typeof window[cleanupKey] === "function") {
@@ -920,6 +947,9 @@
     const content = document.querySelector("[data-markdown-outline]");
     const entries = getBasicOutlineEntries(content);
     if (!question || !content || !entries.length) return;
+    const locale =
+      window.navigator?.languages?.[0] || window.navigator?.language || "en";
+    const messages = getBasicOutlineMessages(locale);
 
     const headings = entries.map((entry) => entry.heading);
     const reservedIds = new Set(
@@ -946,18 +976,19 @@
     const outline = document.createElement("nav");
     outline.className = "markdown-basic-outline";
     outline.dataset.open = "false";
-    outline.setAttribute("aria-label", "Back outline");
+    outline.setAttribute("aria-label", messages.backOutline);
 
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "markdown-basic-outline-toggle";
+    toggle.setAttribute("aria-label", messages.openOutline);
     toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-controls", "markdown-basic-outline-panel");
     toggle.innerHTML = [
       '<svg viewBox="0 0 24 24" aria-hidden="true">',
       '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />',
       "</svg>",
-      "<span>目录</span>",
+      `<span>${messages.outline}</span>`,
       `<span class="markdown-basic-outline-count">${entries.length}</span>`,
     ].join("");
 
@@ -965,26 +996,26 @@
     scrim.type = "button";
     scrim.className = "markdown-basic-outline-scrim";
     scrim.tabIndex = -1;
-    scrim.setAttribute("aria-label", "关闭目录");
+    scrim.setAttribute("aria-label", messages.closeOutline);
     scrim.setAttribute("aria-hidden", "true");
 
     const panel = document.createElement("section");
     panel.id = "markdown-basic-outline-panel";
     panel.className = "markdown-basic-outline-panel";
-    panel.setAttribute("aria-label", "背面目录");
+    panel.setAttribute("aria-label", messages.backOutline);
 
     const panelHeader = document.createElement("header");
     panelHeader.className = "markdown-basic-outline-header";
     const panelTitle = document.createElement("strong");
-    panelTitle.textContent = "目录";
+    panelTitle.textContent = messages.outline;
     const panelCount = document.createElement("span");
     panelCount.className = "markdown-basic-outline-total";
-    panelCount.textContent = `${entries.length} 个标题`;
+    panelCount.textContent = messages.headingCount(entries.length);
 
     const close = document.createElement("button");
     close.type = "button";
     close.className = "markdown-basic-outline-close";
-    close.setAttribute("aria-label", "关闭目录");
+    close.setAttribute("aria-label", messages.closeOutline);
     close.innerHTML = [
       '<svg viewBox="0 0 24 24" aria-hidden="true">',
       '<path d="M6 6l12 12M18 6 6 18" />',
@@ -1000,8 +1031,8 @@
     questionLink.className = "markdown-basic-outline-link";
     questionLink.dataset.section = "question";
     questionLink.href = "#markdown-basic-question";
-    questionLink.textContent = "正面";
-    questionLink.title = "返回正面";
+    questionLink.textContent = messages.front;
+    questionLink.title = messages.frontTitle;
     questionItem.appendChild(questionLink);
     list.appendChild(questionItem);
 
@@ -1011,8 +1042,8 @@
     answerLink.className = "markdown-basic-outline-link";
     answerLink.dataset.section = "answer";
     answerLink.href = "#answer";
-    answerLink.textContent = "背面";
-    answerLink.title = "返回背面开头";
+    answerLink.textContent = messages.back;
+    answerLink.title = messages.backTitle;
     answerItem.appendChild(answerLink);
     list.appendChild(answerItem);
 
