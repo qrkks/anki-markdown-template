@@ -141,7 +141,7 @@ test("Markdown Basic outline includes every non-empty heading in document order"
   };
   const context = vm.createContext({container, result: null});
   vm.runInContext(
-    `${extractFunction(source, "getBasicOutlineEntries", "enhanceBasicOutline")}
+    `${extractFunction(source, "getBasicOutlineHeadingText", "enhanceBasicOutline")}
      result = getBasicOutlineEntries(container).map(({level, title}) => ({level, title}));`,
     context,
   );
@@ -150,6 +150,56 @@ test("Markdown Basic outline includes every non-empty heading in document order"
     {level: 2, title: "Details and examples"},
     {level: 6, title: "Deep note"},
   ]);
+});
+
+test("Markdown Basic outline uses each KaTeX source formula only once", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const renderedFormula = (tex, visibleText) => ({
+    textContent: `${visibleText}${tex}${visibleText}`,
+    querySelector(selector) {
+      if (selector === 'annotation[encoding="application/x-tex"]') {
+        return {textContent: tex};
+      }
+      if (selector === ".katex-html") return {textContent: visibleText};
+      return null;
+    },
+  });
+  const firstFormula = renderedFormula("AA^T", "AAT");
+  const secondFormula = renderedFormula("A^TA", "ATA");
+  const clone = {
+    querySelectorAll(selector) {
+      assert.equal(selector, ".katex");
+      return [firstFormula, secondFormula];
+    },
+    get textContent() {
+      return `A是向量的话，${firstFormula.textContent}的对角线就是${secondFormula.textContent}吗？`;
+    },
+  };
+  const heading = {
+    tagName: "H1",
+    textContent: "A是向量的话，AATAA^TAAT的对角线就是ATAA^TAATA吗？",
+    querySelector(selector) {
+      assert.equal(selector, ".katex");
+      return firstFormula;
+    },
+    cloneNode(deep) {
+      assert.equal(deep, true);
+      return clone;
+    },
+  };
+  const container = {
+    querySelectorAll(selector) {
+      assert.equal(selector, "h1,h2,h3,h4,h5,h6");
+      return [heading];
+    },
+  };
+  const context = vm.createContext({container, result: null});
+  vm.runInContext(
+    `${extractFunction(source, "getBasicOutlineHeadingText", "enhanceBasicOutline")}
+     result = getBasicOutlineEntries(container)[0].title;`,
+    context,
+  );
+  assert.equal(context.result, "A是向量的话，AA^T的对角线就是A^TA吗？");
 });
 
 test("tag prefixes group stably, preserve full text, and survive front-side reuse", async () => {

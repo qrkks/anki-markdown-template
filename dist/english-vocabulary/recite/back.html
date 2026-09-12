@@ -874,13 +874,37 @@
     });
   }
 
+  function getBasicOutlineHeadingText(heading) {
+    const normalize = (value) => value.replace(/\s+/g, " ").trim();
+    if (!heading?.querySelector?.(".katex")) {
+      return normalize(heading?.textContent || "");
+    }
+
+    // KaTeX keeps MathML, the original TeX annotation, and the visible HTML
+    // in the same node. textContent includes all three even though CSS hides
+    // two of them, so replace each formula with one stable plain-text label.
+    const clone = heading.cloneNode(true);
+    clone.querySelectorAll(".katex").forEach((math) => {
+      const annotation = math.querySelector(
+        'annotation[encoding="application/x-tex"]',
+      );
+      const visibleMath = math.querySelector(".katex-html");
+      math.textContent =
+        (annotation?.textContent || "").trim() ||
+        (visibleMath?.textContent || "").trim() ||
+        math.textContent ||
+        "";
+    });
+    return normalize(clone.textContent || "");
+  }
+
   function getBasicOutlineEntries(container) {
     if (!container) return [];
     return Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
       .map((heading) => ({
         heading,
         level: Number(heading.tagName.slice(1)),
-        title: (heading.textContent || "").replace(/\s+/g, " ").trim(),
+        title: getBasicOutlineHeadingText(heading),
       }))
       .filter((entry) => entry.title);
   }
