@@ -360,18 +360,25 @@
     bottom: max(16px, env(safe-area-inset-bottom));
     z-index: 40;
     display: inline-flex;
+    -webkit-appearance: none;
+    appearance: none;
     min-height: 48px;
     align-items: center;
     gap: 8px;
     padding: 0 16px;
-    color: #ffffff;
-    background: var(--mb-accent);
-    border-radius: 999px;
+    color: #ffffff !important;
+    background: var(--mb-accent) !important;
+    border: 0 !important;
+    border-radius: 999px !important;
     box-shadow: var(--mb-outline-shadow);
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
     touch-action: manipulation;
+}
+
+.markdown-basic-outline-toggle:hover {
+    box-shadow: var(--mb-outline-shadow);
 }
 
 .markdown-basic-outline-toggle svg,
