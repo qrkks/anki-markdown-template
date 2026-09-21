@@ -371,7 +371,7 @@
     border: 0 !important;
     border-radius: 999px !important;
     box-shadow: var(--mb-outline-shadow);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
     touch-action: manipulation;
@@ -476,13 +476,13 @@
 }
 
 .markdown-basic-outline-header strong {
-    font-size: 17px;
+    font-size: 18px;
 }
 
 .markdown-basic-outline-total {
     margin-right: auto;
     color: var(--mb-muted);
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .markdown-basic-outline-close {
@@ -534,8 +534,8 @@
     color: var(--mb-muted);
     border-left: 3px solid transparent;
     border-radius: 8px;
-    font-size: 14px;
-    line-height: 1.35;
+    font-size: 16px;
+    line-height: 1.45;
     text-decoration: none;
     overflow-wrap: anywhere;
     touch-action: manipulation;

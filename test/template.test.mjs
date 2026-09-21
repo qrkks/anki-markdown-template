@@ -128,6 +128,10 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(styling, /@media \(min-width: 1280px\)/);
   assert.match(styling, /min-height:\s*48px/);
   assert.match(styling, /env\(safe-area-inset-bottom\)/);
+  assert.match(
+    styling,
+    /\.markdown-basic-outline-link\s*\{[^}]*font-size:\s*16px;[^}]*line-height:\s*1\.45;/,
+  );
   assert.doesNotMatch(back, /id=["']back["']/);
   assert.match(back, /<script>/);
 });
