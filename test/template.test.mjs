@@ -113,6 +113,9 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   );
   assert.match(styling, /\.markdown-basic-outline-panel/);
   assert.match(styling, /\.markdown-basic-outline-answer-item/);
+  assert.match(styling, /\.markdown-basic-outline-label/);
+  assert.match(styling, /\.markdown-basic-outline-math/);
+  assert.match(back, /appendBasicOutlineHeadingContent\(link, entry\.heading\)/);
   assert.match(
     styling,
     /\.markdown-basic-outline-toggle\s*\{[^}]*appearance:\s*none;[^}]*color:\s*#ffffff\s*!important;[^}]*background:\s*var\(--mb-accent\)\s*!important/,
@@ -145,7 +148,7 @@ test("Markdown Basic outline includes every non-empty heading in document order"
   };
   const context = vm.createContext({container, result: null});
   vm.runInContext(
-    `${extractFunction(source, "getBasicOutlineHeadingText", "enhanceBasicOutline")}
+    `${extractFunction(source, "getBasicOutlineFormulaSource", "enhanceBasicOutline")}
      result = getBasicOutlineEntries(container).map(({level, title}) => ({level, title}));`,
     context,
   );
@@ -199,11 +202,88 @@ test("Markdown Basic outline uses each KaTeX source formula only once", async ()
   };
   const context = vm.createContext({container, result: null});
   vm.runInContext(
-    `${extractFunction(source, "getBasicOutlineHeadingText", "enhanceBasicOutline")}
+    `${extractFunction(source, "getBasicOutlineFormulaSource", "enhanceBasicOutline")}
      result = getBasicOutlineEntries(container)[0].title;`,
     context,
   );
   assert.equal(context.result, "A是向量的话，AA^T的对角线就是A^TA吗？");
+});
+
+test("Markdown Basic outline reuses compact visual KaTeX with source labels", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const appended = [];
+  const visualMath = {
+    classNames: [],
+    attributes: {"aria-label": "duplicate"},
+    mathmlRemoved: false,
+    querySelector(selector) {
+      if (selector === ".katex-mathml") {
+        return {remove: () => { this.mathmlRemoved = true; }};
+      }
+      if (selector === ".katex-html") return {};
+      return null;
+    },
+    classList: {add(name) { visualMath.classNames.push(name); }},
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
+    title: "",
+  };
+  const math = {
+    nodeType: 1,
+    textContent: "rendered\\frac{a}{b}rendered",
+    classList: {contains: (name) => name === "katex"},
+    querySelector(selector) {
+      if (selector === 'annotation[encoding="application/x-tex"]') {
+        return {textContent: "\\frac{a}{b}"};
+      }
+      if (selector === ".katex-html") return {textContent: "ab"};
+      return null;
+    },
+    cloneNode(deep) {
+      assert.equal(deep, true);
+      return visualMath;
+    },
+  };
+  const nestedText = {
+    nodeType: 1,
+    tagName: "STRONG",
+    classList: {contains: () => false},
+    childNodes: [{nodeType: 3, textContent: "Ratio "}],
+  };
+  const heading = {
+    childNodes: [nestedText, math, {nodeType: 3, textContent: " result"}],
+  };
+  const label = {
+    childNodes: [],
+    className: "",
+    appendChild(node) { this.childNodes.push(node); },
+    textContent: "",
+  };
+  const document = {
+    createElement(tagName) {
+      assert.equal(tagName, "span");
+      return label;
+    },
+    createTextNode(textContent) { return {nodeType: 3, textContent}; },
+  };
+  const link = {appendChild(node) { appended.push(node); }};
+  const context = vm.createContext({document, heading, link});
+  vm.runInContext(
+    `${extractFunction(source, "getBasicOutlineFormulaSource", "getBasicOutlineEntries")}
+     appendBasicOutlineHeadingContent(link, heading);`,
+    context,
+  );
+
+  assert.equal(appended[0], label);
+  assert.equal(label.className, "markdown-basic-outline-label");
+  assert.deepEqual(
+    label.childNodes.map((node) => node.textContent || node.title),
+    ["Ratio ", "\\frac{a}{b}", " result"],
+  );
+  assert.equal(visualMath.mathmlRemoved, true);
+  assert.deepEqual(visualMath.classNames, ["markdown-basic-outline-math"]);
+  assert.deepEqual(visualMath.attributes, {"aria-hidden": "true"});
+  assert.equal(visualMath.title, "\\frac{a}{b}");
 });
 
 test("Markdown Basic outline follows the system language when initialized", async () => {

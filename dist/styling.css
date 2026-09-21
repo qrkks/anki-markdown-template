@@ -541,6 +541,22 @@
     touch-action: manipulation;
 }
 
+.markdown-basic-outline-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.markdown-basic-outline-label .markdown-basic-outline-math {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 1em;
+    line-height: 1;
+    vertical-align: -0.15em;
+    white-space: nowrap;
+}
+
 .markdown-basic-outline-link[data-level="2"] { padding-left: 24px; }
 .markdown-basic-outline-link[data-level="3"] { padding-left: 36px; }
 .markdown-basic-outline-link[data-level="4"] { padding-left: 48px; }

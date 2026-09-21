@@ -839,6 +839,18 @@
     });
   }
 
+  function getBasicOutlineFormulaSource(math) {
+    const annotation = math?.querySelector?.(
+      'annotation[encoding="application/x-tex"]',
+    );
+    const visibleMath = math?.querySelector?.(".katex-html");
+    return (
+      (annotation?.textContent || "").trim() ||
+      (visibleMath?.textContent || "").trim() ||
+      (math?.textContent || "").trim()
+    );
+  }
+
   function getBasicOutlineHeadingText(heading) {
     const normalize = (value) => value.replace(/\s+/g, " ").trim();
     if (!heading?.querySelector?.(".katex")) {
@@ -850,17 +862,51 @@
     // two of them, so replace each formula with one stable plain-text label.
     const clone = heading.cloneNode(true);
     clone.querySelectorAll(".katex").forEach((math) => {
-      const annotation = math.querySelector(
-        'annotation[encoding="application/x-tex"]',
-      );
-      const visibleMath = math.querySelector(".katex-html");
-      math.textContent =
-        (annotation?.textContent || "").trim() ||
-        (visibleMath?.textContent || "").trim() ||
-        math.textContent ||
-        "";
+      math.textContent = getBasicOutlineFormulaSource(math);
     });
     return normalize(clone.textContent || "");
+  }
+
+  function appendBasicOutlineHeadingContent(link, heading) {
+    const label = document.createElement("span");
+    label.className = "markdown-basic-outline-label";
+
+    const appendChildren = (source, target) => {
+      Array.from(source?.childNodes || []).forEach((node) => {
+        if (node.nodeType === 3) {
+          target.appendChild(document.createTextNode(node.textContent || ""));
+          return;
+        }
+        if (node.nodeType !== 1) return;
+        if (node.tagName === "BR") {
+          target.appendChild(document.createTextNode(" "));
+          return;
+        }
+        if (!node.classList?.contains("katex")) {
+          appendChildren(node, target);
+          return;
+        }
+
+        const sourceTex = getBasicOutlineFormulaSource(node);
+        const visualMath = node.cloneNode(true);
+        visualMath.querySelector?.(".katex-mathml")?.remove();
+        if (!visualMath.querySelector?.(".katex-html")) {
+          target.appendChild(document.createTextNode(sourceTex));
+          return;
+        }
+        visualMath.classList.add("markdown-basic-outline-math");
+        visualMath.setAttribute("aria-hidden", "true");
+        visualMath.removeAttribute("aria-label");
+        visualMath.title = sourceTex;
+        target.appendChild(visualMath);
+      });
+    };
+
+    appendChildren(heading, label);
+    if (!label.childNodes.length) {
+      label.textContent = getBasicOutlineHeadingText(heading);
+    }
+    link.appendChild(label);
   }
 
   function getBasicOutlineEntries(container) {
@@ -1019,7 +1065,8 @@
       link.className = "markdown-basic-outline-link";
       link.dataset.level = String(entry.level);
       link.href = `#${entry.id}`;
-      link.textContent = entry.title;
+      appendBasicOutlineHeadingContent(link, entry.heading);
+      link.setAttribute("aria-label", entry.title);
       link.title = entry.title;
       item.appendChild(link);
       list.appendChild(item);
