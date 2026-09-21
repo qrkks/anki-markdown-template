@@ -852,6 +852,11 @@ test("Obsidian migration only relaxes its known global font selector", async () 
 
 test("resource manifest is pinned and KaTeX CSS uses flat Anki font paths", () => {
   assert.equal(new Set(RESOURCE_MANIFEST.map(({filename}) => filename)).size, 30);
+  assert.ok(
+    RESOURCE_MANIFEST.some(
+      ({filename}) => filename === "_mermaid-11.16.0.min.js",
+    ),
+  );
   for (const resource of RESOURCE_MANIFEST) {
     assert.match(resource.filename, /^_/);
     assert.match(resource.url, /^https:\/\//);
@@ -1600,8 +1605,18 @@ test("runtime requires fenced blocks instead of indentation for code", async () 
 
 test("runtime uses explicit resource checks and secure Mermaid defaults", async () => {
   const source = await readFile("src/template.js", "utf8");
+  const coreResources = source.slice(
+    source.indexOf("const RESOURCES ="),
+    source.indexOf("function setResourceStatus"),
+  );
   assert.doesNotMatch(source, /cdn\.includes\(/);
   assert.doesNotMatch(source, /Promise\.all\(\[\s*\.\.\.RESOURCES\.scripts/);
+  assert.match(source, /const MERMAID_RESOURCE\s*=\s*\{/);
+  assert.doesNotMatch(coreResources, /id:\s*"mermaid"/);
+  assert.match(
+    source,
+    /mermaidDiagrams\.length\s*>\s*0[\s\S]*?ensureMermaidLoaded\(\)/,
+  );
   assert.match(source, /securityLevel:\s*"strict"/);
   assert.match(source, /html:\s*typeof window\.DOMPurify/);
   assert.match(source, /isLoaded:\s*\(\) => typeof window\.renderMathInElement/);
@@ -1609,6 +1624,45 @@ test("runtime uses explicit resource checks and secure Mermaid defaults", async 
   assert.doesNotMatch(source, /"\\\\ce":\s*"\\\\ce"/);
   assert.doesNotMatch(source, /highlightedCode\s*=\s*decodedStr/);
   assert.match(source, /highlightedCode\s*=\s*escapeHtml\(decodedStr\)/);
+});
+
+test("Mermaid lazy loading is shared within the reused WebView", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const runtimeWindow = {};
+  let finishLoad;
+  let loadCount = 0;
+  const context = vm.createContext({
+    console: {warn() {}},
+    window: runtimeWindow,
+    loadScript() {
+      loadCount += 1;
+      return new Promise((resolve) => {
+        finishLoad = () => {
+          runtimeWindow.mermaid = {render() {}};
+          resolve();
+        };
+      });
+    },
+    setResourceStatus() {},
+  });
+  vm.runInContext(
+    `const MERMAID_PROMISE_KEY = "ankiMarkdownMermaidPromise";
+     const MERMAID_RESOURCE = {
+       id: "mermaid",
+       isLoaded: () => typeof window.mermaid?.render === "function",
+     };
+     async ${extractFunction(source, "ensureMermaidLoaded", "cleanHTML")}
+     this.ensureMermaidLoaded = ensureMermaidLoaded;`,
+    context,
+  );
+
+  const first = context.ensureMermaidLoaded();
+  const second = context.ensureMermaidLoaded();
+  assert.equal(loadCount, 1);
+  finishLoad();
+  assert.deepEqual(await Promise.all([first, second]), [true, true]);
+  assert.equal(await context.ensureMermaidLoaded(), true);
+  assert.equal(loadCount, 1);
 });
 
 test("runtime supports legacy card containers and selective Markdown regions", async () => {

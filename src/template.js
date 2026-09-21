@@ -3,12 +3,20 @@
 
   const DEBUG = false;
   const RESOURCE_PROMISE_KEY = "ankiMarkdownResourcePromise";
+  const MERMAID_PROMISE_KEY = "ankiMarkdownMermaidPromise";
   const THEME_LINK_ID = "anki-markdown-highlight-theme";
   const originalMarkdownSources = new WeakMap();
 
   function debug(...args) {
     if (DEBUG) console.debug(...args);
   }
+
+  const MERMAID_RESOURCE = {
+    id: "mermaid",
+    path: "_mermaid-11.16.0.min.js",
+    cdn: "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js",
+    isLoaded: () => typeof window.mermaid?.render === "function",
+  };
 
   const RESOURCES = {
     css: [
@@ -30,12 +38,6 @@
         path: "_highlight-11.11.1.js",
         cdn: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js",
         isLoaded: () => typeof window.hljs?.highlight === "function",
-      },
-      {
-        id: "mermaid",
-        path: "_mermaid-11.16.0.min.js",
-        cdn: "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js",
-        isLoaded: () => typeof window.mermaid?.render === "function",
       },
       {
         id: "katex",
@@ -151,6 +153,27 @@
     for (const resource of RESOURCES.scripts) {
       await loadOptional(loadScript, resource);
     }
+  }
+
+  async function ensureMermaidLoaded() {
+    if (MERMAID_RESOURCE.isLoaded()) {
+      setResourceStatus(MERMAID_RESOURCE, "cached");
+      return true;
+    }
+
+    if (!window[MERMAID_PROMISE_KEY]) {
+      window[MERMAID_PROMISE_KEY] = loadScript(MERMAID_RESOURCE).catch(
+        (error) => {
+          setResourceStatus(MERMAID_RESOURCE, "failed");
+          window[MERMAID_PROMISE_KEY] = null;
+          console.warn("Optional resource failed: mermaid", error);
+          return false;
+        },
+      );
+    }
+
+    const loaded = await window[MERMAID_PROMISE_KEY];
+    return loaded !== false && MERMAID_RESOURCE.isLoaded();
   }
 
   function cleanHTML(text) {
@@ -1340,9 +1363,25 @@
       // ✅ 安全的代码高亮功能
       addCodeHighlight(el);
 
-      // 初始化 Mermaid 图表
-      if (window.mermaid) {
-        try {
+      // Mermaid is much larger than the core Markdown/math runtime. Load it
+      // only when the rendered card actually contains a Mermaid fence.
+      const mermaidDiagrams = Array.from(el.querySelectorAll(".mermaid"));
+      if (mermaidDiagrams.length > 0) {
+        void ensureMermaidLoaded().then((loaded) => {
+          if (!loaded) {
+            mermaidDiagrams.forEach((diagram) => {
+              diagram.innerHTML = `
+                    <div class="error-message">
+                      ⚠️ Mermaid 图表库加载失败
+                      <br>
+                      <small>请检查网络连接并刷新页面重试</small>
+                    </div>
+                  `;
+            });
+            return;
+          }
+
+          try {
           debug("🔄 开始初始化 Mermaid...", window.mermaid.version);
 
           // 确保 mermaid 库已经正确加载
@@ -1372,7 +1411,6 @@
           });
           debug("✅ Mermaid 初始化成功");
 
-          const mermaidDiagrams = el.querySelectorAll(".mermaid");
           debug(`📊 找到 ${mermaidDiagrams.length} 个 Mermaid 图表`);
 
           mermaidDiagrams.forEach(async (diagram, index) => {
@@ -1535,21 +1573,9 @@
                   `;
             }
           });
-        } catch (err) {
-          console.error("❌ Mermaid 初始化失败：", err);
-        }
-      } else {
-        console.warn("⚠️ Mermaid 库未加载，请检查网络连接或 CDN 可用性");
-        // 显示加载失败提示
-        const mermaidDiagrams = el.querySelectorAll(".mermaid");
-        mermaidDiagrams.forEach((diagram) => {
-          diagram.innerHTML = `
-                <div class="error-message">
-                  ⚠️ Mermaid 图表库加载失败
-                  <br>
-                  <small>请检查网络连接并刷新页面重试</small>
-                </div>
-              `;
+          } catch (err) {
+            console.error("❌ Mermaid 初始化失败：", err);
+          }
         });
       }
 
