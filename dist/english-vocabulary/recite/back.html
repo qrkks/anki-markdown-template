@@ -332,6 +332,12 @@
     // Divs with classes/styles remain raw HTML and are sanitized later.
     cleaned = normalizeLayoutDivs(normalizeMarkdownParagraphs(cleaned))
       .replace(/<br\s*\/?>/gi, "\n")
+      // A heading typed directly in Anki can be stored as a bare line whose
+      // separator is an HTML/non-breaking-space entity rather than whitespace.
+      .replace(
+        /^(#{1,6})(?:[ \t\u00a0]|&nbsp;|&#0*160;|&#x0*a0;)+/gim,
+        "$1 ",
+      )
       .replace(/\n{3,}/g, "\n\n")
       .replace(/^(?:[ \t]*\n)+/, "")
       .replace(/\n+$/g, "");

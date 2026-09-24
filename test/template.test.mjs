@@ -1257,6 +1257,16 @@ test("cleanHTML restores headings typed in Anki rich-text paragraphs", async () 
     context.cleanHTML('<p class="lead">#&nbsp;intentional rich HTML</p>'),
     '<p class="lead">#&nbsp;intentional rich HTML</p>',
   );
+  assert.equal(
+    context.cleanHTML(
+      "#&nbsp;$u_0 = Xc = c_1x_1 + c_2x_2$<br># $already_normal$",
+    ),
+    "# $u_0 = Xc = c_1x_1 + c_2x_2$\n# $already_normal$",
+  );
+  assert.equal(
+    context.cleanHTML("##&#160;decimal<br>###&#xA0;hex<br>####\u00a0unicode"),
+    "## decimal\n### hex\n#### unicode",
+  );
 });
 
 async function createMathRenderer() {
@@ -1295,6 +1305,12 @@ test("runtime protects complete formulas from Markdown emphasis and escapes", as
     );
   }
   assert.equal(render(String.raw`$x^*$ and $y^*$`), "<p>$x^*$ and $y^*$</p>\n");
+});
+
+test("runtime renders a bare Anki NBSP heading containing a formula", async () => {
+  const render = await createMathRenderer();
+  const formula = String.raw`$u_0 = Xc = c_1x_1 + c_2x_2 + \cdots + c_nx_n$`;
+  assert.equal(render(`#&nbsp;${formula}`), `<h1>${formula}</h1>\n`);
 });
 
 test("runtime keeps formula boundaries, escaped characters, and HTML entities intact", async () => {
