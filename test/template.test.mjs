@@ -1198,6 +1198,12 @@ test("cleanHTML treats fenced and inline code as opaque text", async () => {
     context.cleanHTML("Use `<span>hello</span>` here"),
     "Use `<span>hello</span>` here",
   );
+  assert.equal(
+    context.cleanHTML(
+      "```latex<br>A^\\top A =<br>\\begin{bmatrix}<br>4 &amp; -3 \\\\<br>4 &amp; 3<br>\\end{bmatrix}<br>```",
+    ),
+    "```latex\nA^\\top A =\n\\begin{bmatrix}\n4 &amp; -3 \\\\\n4 &amp; 3\n\\end{bmatrix}\n```",
+  );
 });
 
 test("cleanHTML normalizes only Anki layout wrappers", async () => {
@@ -1293,6 +1299,17 @@ async function createMathRenderer() {
     return context.restoreDisplayMathBlocks(md.render(protectedMath.text), protectedMath.blocks);
   };
 }
+
+test("runtime reconstructs fenced code from Anki br line breaks", async () => {
+  const render = await createMathRenderer();
+  const rendered = render(
+    "```latex<br>A^\\top A =<br>\\begin{bmatrix}<br>4 &amp; -3 \\\\<br>4 &amp; 3<br>\\end{bmatrix}<br>```",
+  );
+
+  assert.match(rendered, /^<pre><code class="language-latex">/);
+  assert.doesNotMatch(rendered, /<p><code>latex|latex&lt;br&gt;/);
+  assert.match(rendered, /A\^\\top A =\n/);
+});
 
 test("runtime protects complete formulas from Markdown emphasis and escapes", async () => {
   const render = await createMathRenderer();

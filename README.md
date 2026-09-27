@@ -122,6 +122,7 @@ The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 - Content inside fenced code blocks and inline code is excluded from HTML cleanup, so tags such as `<div>` and `<script>` are displayed as code text.
 - Four-space or tab indentation does not create a code block. Use an explicit triple-backtick fence for code blocks.
 - Plain `<div>`, `<div dir="auto">`, and `<br>` elements commonly produced by Anki's editor are converted to line breaks.
+- When AnkiConnect stores editable line breaks as `<br>`, the renderer restores those breaks before recognizing fenced code. Input such as ```` ```latex<br>...<br>``` ```` therefore remains a multiline fenced block instead of becoming inline code.
 - Empty `<p>` elements produced by Anki become blank lines. A heading beginning with `#` inside an unstyled `<p>` is restored to Markdown, and `&nbsp;` after the heading marker becomes a regular space.
 - `<div>` elements with attributes such as `class` or `style`, along with other HTML such as images, tables, and links, are preserved and sanitized by DOMPurify after rendering.
 - Markdown parsing inside HTML containers is not additionally guaranteed. Do not wrap Markdown that requires stable rendering in complex HTML containers.

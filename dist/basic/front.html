@@ -255,10 +255,14 @@
       protectedCode.push({ token, value });
       return token;
     };
+    const protectFencedCode = (value) =>
+      value.replace(/(`{3,}|~{3,})[^\n]*\n[\s\S]*?\1/g, protectCode);
 
-    let cleaned = text
-      .replace(/(`{3,}|~{3,})[^\n]*\n[\s\S]*?\1/g, protectCode)
-      .replace(/(`{1,2})(?!`)([\s\S]*?)\1(?!`)/g, protectCode)
+    let cleaned = protectFencedCode(text)
+      // Do not let inline-code matching start inside a triple-backtick fence.
+      // Imported Anki HTML may still use <br> instead of literal newlines, so
+      // those fences are protected in a second pass after line normalization.
+      .replace(/(?<!`)(`{1,2})(?!`)([\s\S]*?)\1(?!`)/g, protectCode)
       .replace(/\r\n?/g, "\n");
 
     // Anki commonly uses bare divs and br elements as line wrappers.
@@ -274,6 +278,11 @@
       .replace(/\n{3,}/g, "\n\n")
       .replace(/^(?:[ \t]*\n)+/, "")
       .replace(/\n+$/g, "");
+
+    // AnkiConnect fields use <br> for editable line breaks. Once those have
+    // become newlines, protect newly reconstructed fences before interpreting
+    // their contents as headings, tables, or other Markdown structure.
+    cleaned = protectFencedCode(cleaned);
 
     // Anki/ODH fields may carry uniform leading indentation that Markdown
     // misreads as a code block. Remove only the indentation shared by every
