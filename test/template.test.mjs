@@ -99,9 +99,10 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /id=["']markdown-basic-question["']/);
   assert.match(back, /id=["']answer["']/);
   assert.match(back, /{{Back}}/);
-  assert.match(back, /data-markdown-outline/);
+  assert.match(back, /data-markdown-outline="basic"/);
+  assert.match(back, /data-markdown-outline-min="1"/);
   assert.match(back, /function enhanceBasicOutline\(\)/);
-  assert.match(back, /querySelectorAll\("h1,h2,h3,h4,h5,h6"\)/);
+  assert.match(back, /selector = "h1,h2,h3,h4,h5,h6"/);
   assert.match(back, /aria-current", "location"/);
   assert.match(back, /questionLink\.textContent = messages\.front/);
   assert.match(back, /questionLink\.href = "#markdown-basic-question"/);
@@ -109,7 +110,7 @@ test("Markdown Basic is clean, scoped, and built to both public paths", async ()
   assert.match(back, /answerLink\.href = "#answer"/);
   assert.match(
     back,
-    /const links = \[questionLink, answerLink, \.\.\.headingLinks\]/,
+    /const links = \[\.\.\.sectionLinks, \.\.\.headingLinks\]/,
   );
   assert.match(styling, /\.markdown-basic-outline-panel/);
   assert.match(styling, /\.markdown-basic-outline-answer-item/);
@@ -161,6 +162,30 @@ test("Markdown Basic outline includes every non-empty heading in document order"
     {level: 2, title: "Details and examples"},
     {level: 6, title: "Deep note"},
   ]);
+});
+
+test("Markdown outline settings keep Basic behavior and gate vocabulary at three headings", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({result: null});
+  vm.runInContext(
+    `${extractFunction(source, "getMarkdownOutlineSettings", "getBasicOutlineMessages")}
+     const basic = getMarkdownOutlineSettings({dataset: {markdownOutline: "basic", markdownOutlineMin: "1"}});
+     const vocabulary = getMarkdownOutlineSettings({dataset: {markdownOutline: "vocabulary", markdownOutlineMin: "3"}});
+     result = {basic, vocabulary};`,
+    context,
+  );
+  const result = JSON.parse(JSON.stringify(context.result));
+  assert.equal(result.basic.minimumHeadingCount, 1);
+  assert.equal(result.basic.showSectionLinks, true);
+  assert.equal(result.basic.headingSelector, "h1,h2,h3,h4,h5,h6");
+  assert.equal(result.vocabulary.minimumHeadingCount, 3);
+  assert.equal(result.vocabulary.showSectionLinks, false);
+  assert.equal(
+    result.vocabulary.headingSelector,
+    [1, 2, 3, 4, 5, 6]
+      .map((level) => `[data-markdown] h${level}`)
+      .join(","),
+  );
 });
 
 test("Markdown Basic outline uses each KaTeX source formula only once", async () => {
@@ -310,10 +335,8 @@ test("Markdown Basic outline follows the system language when initialized", asyn
     en: ["Outline", "Front", "Back", "1 heading", "2 headings", "Close outline"],
     fallback: "Outline",
   });
-  assert.match(
-    source,
-    /if \(!question \|\| !content \|\| !entries\.length\) return;[\s\S]*?window\.navigator\?\.languages\?\.\[0\]/,
-  );
+  assert.match(source, /entries\.length < settings\.minimumHeadingCount/);
+  assert.match(source, /settings\.showSectionLinks && !question/);
 });
 
 test("tag prefixes group stably, preserve full text, and survive front-side reuse", async () => {
@@ -464,11 +487,15 @@ test("English vocabulary preset is built with its required fields", async () => 
   ]);
 
   assert.doesNotMatch(styling, /<\/?(?:style|script)>/i);
+  assert.match(styling, /shared-markdown-outline:start/);
+  assert.match(styling, /\.markdown-basic-outline-panel/);
   assert.match(front, /{{单词}}/);
   assert.match(front, /{{音标}}/);
   assert.match(front, /{{发音}}/);
   assert.match(back, /{{FrontSide}}/);
   assert.doesNotMatch(back, /id=["']answer["']/);
+  assert.match(back, /data-markdown-outline="vocabulary"/);
+  assert.match(back, /data-markdown-outline-min="3"/);
   for (const field of [
     "词性 1",
     "释义 1",
@@ -522,7 +549,12 @@ test("SPELLING and DICTATION use the shared card layout", async () => {
     assert.doesNotMatch(front, /<script>/);
     assert.equal(back.match(/<script>/g)?.length, 1);
     const templateMarkup = back.split("<script>", 1)[0];
-    assert.equal(templateMarkup.match(/data-markdown/g)?.length, 4);
+    assert.equal(
+      templateMarkup.match(/\bdata-markdown(?=\s+class=)/g)?.length,
+      4,
+    );
+    assert.match(templateMarkup, /data-markdown-outline="vocabulary"/);
+    assert.match(templateMarkup, /data-markdown-outline-min="3"/);
     assert.match(templateMarkup, /data-markdown class=["']md["']/);
     assert.doesNotMatch(templateMarkup, /{{hint:词组短语}}/);
   }
@@ -1286,19 +1318,37 @@ async function createMathRenderer() {
   vm.runInContext(
     `${extractFunction(source, "cleanHTML", "protectDisplayMathBlocks")}
      ${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
-     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableCjkEmphasis")}
+     ${extractFunction(source, "enableCjkEmphasis", "enableMarkdownMath")}
      ${extractFunction(source, "enableMarkdownMath", "escapeHtml")}
      ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}`,
     context,
   );
   const md = new MarkdownIt({html: true, breaks: true, typographer: true, linkify: true});
   md.block.ruler.disable(["code"]);
+  context.enableCjkEmphasis(md);
   context.enableMarkdownMath(md);
   return (input) => {
     const protectedMath = context.protectDisplayMathBlocks(context.cleanHTML(input));
     return context.restoreDisplayMathBlocks(md.render(protectedMath.text), protectedMath.blocks);
   };
 }
+
+test("runtime closes asterisk emphasis before adjacent CJK text", async () => {
+  const render = await createMathRenderer();
+  assert.equal(
+    render("大概率是**斯堪的纳维亚语（北欧古诺尔斯语）**借词"),
+    "<p>大概率是<strong>斯堪的纳维亚语（北欧古诺尔斯语）</strong>借词</p>\n",
+  );
+  assert.equal(
+    render("English **term (note)**word"),
+    "<p>English **term (note)**word</p>\n",
+  );
+  assert.equal(
+    render("中文__下划线（说明）__后文"),
+    "<p>中文__下划线（说明）__后文</p>\n",
+  );
+});
 
 test("runtime reconstructs fenced code from Anki br line breaks", async () => {
   const render = await createMathRenderer();

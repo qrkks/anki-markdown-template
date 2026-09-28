@@ -41,6 +41,16 @@
     --blockquote-background: rgba(31, 111, 159, 0.08);
     --blockquote-border: #1f6f9f;
     --blockquote-text: #45535d;
+    --mb-background: var(--card-background);
+    --mb-foreground: var(--text-main);
+    --mb-muted: var(--text-secondary);
+    --mb-border: var(--table-border);
+    --mb-accent: var(--blue);
+    --mb-outline-background: rgba(255, 255, 255, 0.96);
+    --mb-outline-hover: #eef6fb;
+    --mb-outline-active: #d9edf8;
+    --mb-outline-shadow: 0 16px 40px rgba(31, 35, 40, 0.18);
+    --mb-outline-scrim: transparent;
 }
 
 /* =========================
@@ -73,6 +83,10 @@
     --blockquote-background: rgba(39, 134, 187, 0.14);
     --blockquote-border: #2786bb;
     --blockquote-text: #d7dee5;
+    --mb-outline-background: rgba(31, 35, 40, 0.96);
+    --mb-outline-hover: #2d3743;
+    --mb-outline-active: #243e50;
+    --mb-outline-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
 }
 
 /* =========================
@@ -413,6 +427,15 @@ h.POSD {
     padding: 0;
     margin: 0.8em 0 0.35em;
     line-height: 1.25;
+}
+
+[data-markdown-outline="vocabulary"] [data-markdown] h1,
+[data-markdown-outline="vocabulary"] [data-markdown] h2,
+[data-markdown-outline="vocabulary"] [data-markdown] h3,
+[data-markdown-outline="vocabulary"] [data-markdown] h4,
+[data-markdown-outline="vocabulary"] [data-markdown] h5,
+[data-markdown-outline="vocabulary"] [data-markdown] h6 {
+    scroll-margin-top: 24px;
 }
 
 .md h1 {
@@ -782,3 +805,286 @@ hr.POSD {
     flex: 0 0 auto;
     line-height: 1;
 }
+
+/* shared-markdown-outline:start */
+.markdown-basic-outline-toggle,
+.markdown-basic-outline-close,
+.markdown-basic-outline-scrim {
+    border: 0;
+    font: inherit;
+}
+
+.markdown-basic-outline-toggle {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 40;
+    display: inline-flex;
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 48px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    color: #ffffff !important;
+    background: var(--mb-accent) !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    box-shadow: var(--mb-outline-shadow);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.markdown-basic-outline-toggle:hover {
+    box-shadow: var(--mb-outline-shadow);
+}
+
+.markdown-basic-outline-toggle svg,
+.markdown-basic-outline-close svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.markdown-basic-outline-count {
+    min-width: 1.7em;
+    padding: 0.1em 0.45em;
+    color: var(--mb-accent);
+    background: #ffffff;
+    border-radius: 999px;
+    font-size: 0.78em;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.markdown-basic-outline-toggle:active {
+    opacity: 0.82;
+}
+
+.markdown-basic-outline-toggle:focus-visible,
+.markdown-basic-outline-close:focus-visible,
+.markdown-basic-outline-link:focus-visible {
+    outline: 3px solid var(--mb-background);
+    box-shadow: 0 0 0 5px var(--mb-accent);
+}
+
+.markdown-basic-outline-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 41;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--mb-outline-scrim) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.markdown-basic-outline-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 42;
+    box-sizing: border-box;
+    display: flex;
+    max-height: min(72vh, 620px);
+    flex-direction: column;
+    padding: 16px max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+    color: var(--mb-foreground);
+    background: var(--mb-outline-background);
+    border: 1px solid var(--mb-border);
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: var(--mb-outline-shadow);
+    text-align: left;
+    transform: translateY(calc(100% + 24px));
+    transition: transform 220ms ease;
+}
+
+.markdown-basic-outline[data-open="true"] .markdown-basic-outline-scrim {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.markdown-basic-outline[data-open="true"] .markdown-basic-outline-panel {
+    transform: translateY(0);
+}
+
+.markdown-basic-outline-header {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px 10px 8px;
+    border-bottom: 1px solid var(--mb-border);
+}
+
+.markdown-basic-outline-header strong {
+    font-size: 18px;
+}
+
+.markdown-basic-outline-total {
+    margin-right: auto;
+    color: var(--mb-muted);
+    font-size: 14px;
+}
+
+.markdown-basic-outline-close {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--mb-muted);
+    background: transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.markdown-basic-outline-close:hover,
+.markdown-basic-outline-close:active {
+    color: var(--mb-foreground);
+    background: var(--mb-outline-hover);
+}
+
+.markdown-basic-outline-list {
+    min-height: 0;
+    margin: 0;
+    padding: 8px 0 0;
+    overflow-y: auto;
+    list-style: none;
+    overscroll-behavior: contain;
+}
+
+.markdown-basic-outline-list li {
+    margin: 0;
+    padding: 0;
+}
+
+.markdown-basic-outline-list .markdown-basic-outline-answer-item {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--mb-border);
+}
+
+.markdown-basic-outline-link {
+    box-sizing: border-box;
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 8px 12px;
+    color: var(--mb-muted);
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.45;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+}
+
+.markdown-basic-outline-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.markdown-basic-outline-label .markdown-basic-outline-math {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 1em;
+    line-height: 1;
+    vertical-align: -0.15em;
+    white-space: nowrap;
+}
+
+.markdown-basic-outline-link[data-level="2"] { padding-left: 24px; }
+.markdown-basic-outline-link[data-level="3"] { padding-left: 36px; }
+.markdown-basic-outline-link[data-level="4"] { padding-left: 48px; }
+.markdown-basic-outline-link[data-level="5"] { padding-left: 60px; }
+.markdown-basic-outline-link[data-level="6"] { padding-left: 72px; }
+
+.markdown-basic-outline-link[data-section="question"],
+.markdown-basic-outline-link[data-section="answer"] {
+    color: var(--mb-foreground);
+    font-weight: 700;
+}
+
+.markdown-basic-outline-link:hover {
+    color: var(--mb-foreground);
+    background: var(--mb-outline-hover);
+}
+
+.markdown-basic-outline-link[aria-current="location"] {
+    color: var(--mb-accent);
+    background: var(--mb-outline-active);
+    border-left-color: var(--mb-accent);
+    font-weight: 700;
+}
+
+@media (min-width: 1280px) {
+    .markdown-basic-outline-toggle,
+    .markdown-basic-outline-scrim,
+    .markdown-basic-outline-close {
+        display: none;
+    }
+
+    .markdown-basic-outline-panel {
+        top: 24px;
+        right: max(16px, calc((100vw - 760px) / 2 - 248px));
+        bottom: auto;
+        left: auto;
+        width: 224px;
+        max-height: calc(100vh - 48px);
+        padding: 12px;
+        border-bottom: 1px solid var(--mb-border);
+        border-radius: 12px;
+        transform: none;
+        transition: none;
+    }
+
+    .markdown-basic-outline-header {
+        min-height: 36px;
+        padding: 0 6px 8px;
+    }
+
+    .markdown-basic-outline-link {
+        min-height: 36px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .markdown-basic-content .code-lang-label,
+    .markdown-basic-outline-scrim,
+    .markdown-basic-outline-panel {
+        transition: none;
+    }
+}
+
+@media (max-width: 1279px) {
+    .card.markdown-basic-has-outline {
+        padding-bottom: max(80px, calc(64px + env(safe-area-inset-bottom)));
+    }
+}
+/* shared-markdown-outline:end */

@@ -4,7 +4,7 @@
 
 <hr id="answer" class="markdown-basic-answer-rule" />
 
-<main class="markdown-basic-content" data-markdown data-markdown-outline>{{Back}}</main>
+<main class="markdown-basic-content" data-markdown data-markdown-outline="basic" data-markdown-outline-min="1">{{Back}}</main>
 
 <script>
 (function () {
@@ -377,6 +377,41 @@
           : token;
       },
     );
+  }
+
+  function enableCjkEmphasis(md) {
+    const BaseState = md.inline.State;
+    const baseScanDelims = BaseState.prototype.scanDelims;
+    const closingPunctuation =
+      /[)\]}>）】》〉」』〕〗〙〛〞〟”’、，。；：！？…—]/u;
+    const cjkText =
+      /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/u;
+
+    function CjkInlineState(...args) {
+      BaseState.apply(this, args);
+    }
+
+    CjkInlineState.prototype = Object.create(BaseState.prototype);
+    CjkInlineState.prototype.constructor = CjkInlineState;
+    CjkInlineState.prototype.scanDelims = function (start, canSplitWord) {
+      const scanned = baseScanDelims.call(this, start, canSplitWord);
+      if (
+        scanned.can_close ||
+        !canSplitWord ||
+        this.src[start] !== "*"
+      )
+        return scanned;
+
+      const end = start + scanned.length;
+      const previous = this.src.slice(0, start).match(/.$/u)?.[0] || "";
+      const next = this.src.slice(end).match(/^./u)?.[0] || "";
+      if (closingPunctuation.test(previous) && cjkText.test(next)) {
+        scanned.can_close = true;
+      }
+      return scanned;
+    };
+
+    md.inline.State = CjkInlineState;
   }
 
   function enableMarkdownMath(md) {
@@ -915,15 +950,49 @@
     link.appendChild(label);
   }
 
-  function getBasicOutlineEntries(container) {
+  function getBasicOutlineEntries(
+    container,
+    selector = "h1,h2,h3,h4,h5,h6",
+  ) {
     if (!container) return [];
-    return Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+    return Array.from(container.querySelectorAll(selector))
       .map((heading) => ({
         heading,
         level: Number(heading.tagName.slice(1)),
         title: getBasicOutlineHeadingText(heading),
       }))
       .filter((entry) => entry.title);
+  }
+
+  function getMarkdownOutlineSettings(container) {
+    const mode = container?.dataset?.markdownOutline || "basic";
+    const configuredMinimum = Number.parseInt(
+      container?.dataset?.markdownOutlineMin || "",
+      10,
+    );
+    const minimumHeadingCount =
+      Number.isFinite(configuredMinimum) && configuredMinimum > 0
+        ? configuredMinimum
+        : mode === "vocabulary"
+          ? 3
+          : 1;
+    const headingSelector =
+      mode === "vocabulary"
+        ? [1, 2, 3, 4, 5, 6]
+            .map((level) => `[data-markdown] h${level}`)
+            .join(",")
+        : "h1,h2,h3,h4,h5,h6";
+
+    return {
+      headingIdPrefix:
+        mode === "vocabulary"
+          ? "markdown-vocabulary-heading"
+          : "markdown-basic-answer-heading",
+      headingSelector,
+      minimumHeadingCount,
+      mode,
+      showSectionLinks: mode === "basic",
+    };
   }
 
   function getBasicOutlineMessages(locale) {
@@ -960,10 +1029,18 @@
       delete window[cleanupKey];
     }
 
-    const question = document.querySelector(".markdown-basic-question");
     const content = document.querySelector("[data-markdown-outline]");
-    const entries = getBasicOutlineEntries(content);
-    if (!question || !content || !entries.length) return;
+    if (!content) return;
+    const settings = getMarkdownOutlineSettings(content);
+    const question = settings.showSectionLinks
+      ? document.querySelector(".markdown-basic-question")
+      : null;
+    const entries = getBasicOutlineEntries(content, settings.headingSelector);
+    if (
+      entries.length < settings.minimumHeadingCount ||
+      (settings.showSectionLinks && !question)
+    )
+      return;
     const locale =
       window.navigator?.languages?.[0] || window.navigator?.language || "en";
     const messages = getBasicOutlineMessages(locale);
@@ -977,7 +1054,7 @@
     entries.forEach((entry, index) => {
       let id = entry.heading.id;
       if (!id || reservedIds.has(id)) {
-        const base = `markdown-basic-answer-heading-${index + 1}`;
+        const base = `${settings.headingIdPrefix}-${index + 1}`;
         id = base;
         let suffix = 2;
         while (reservedIds.has(id)) {
@@ -993,7 +1070,10 @@
     const outline = document.createElement("nav");
     outline.className = "markdown-basic-outline";
     outline.dataset.open = "false";
-    outline.setAttribute("aria-label", messages.backOutline);
+    outline.setAttribute(
+      "aria-label",
+      settings.showSectionLinks ? messages.backOutline : messages.outline,
+    );
 
     const toggle = document.createElement("button");
     toggle.type = "button";
@@ -1019,7 +1099,10 @@
     const panel = document.createElement("section");
     panel.id = "markdown-basic-outline-panel";
     panel.className = "markdown-basic-outline-panel";
-    panel.setAttribute("aria-label", messages.backOutline);
+    panel.setAttribute(
+      "aria-label",
+      settings.showSectionLinks ? messages.backOutline : messages.outline,
+    );
 
     const panelHeader = document.createElement("header");
     panelHeader.className = "markdown-basic-outline-header";
@@ -1042,27 +1125,33 @@
 
     const list = document.createElement("ol");
     list.className = "markdown-basic-outline-list";
-    const questionItem = document.createElement("li");
-    questionItem.className = "markdown-basic-outline-question-item";
-    const questionLink = document.createElement("a");
-    questionLink.className = "markdown-basic-outline-link";
-    questionLink.dataset.section = "question";
-    questionLink.href = "#markdown-basic-question";
-    questionLink.textContent = messages.front;
-    questionLink.title = messages.frontTitle;
-    questionItem.appendChild(questionLink);
-    list.appendChild(questionItem);
+    const sectionLinks = [];
+    let questionLink = null;
+    let answerLink = null;
+    if (settings.showSectionLinks) {
+      const questionItem = document.createElement("li");
+      questionItem.className = "markdown-basic-outline-question-item";
+      questionLink = document.createElement("a");
+      questionLink.className = "markdown-basic-outline-link";
+      questionLink.dataset.section = "question";
+      questionLink.href = "#markdown-basic-question";
+      questionLink.textContent = messages.front;
+      questionLink.title = messages.frontTitle;
+      questionItem.appendChild(questionLink);
+      list.appendChild(questionItem);
 
-    const answerItem = document.createElement("li");
-    answerItem.className = "markdown-basic-outline-answer-item";
-    const answerLink = document.createElement("a");
-    answerLink.className = "markdown-basic-outline-link";
-    answerLink.dataset.section = "answer";
-    answerLink.href = "#answer";
-    answerLink.textContent = messages.back;
-    answerLink.title = messages.backTitle;
-    answerItem.appendChild(answerLink);
-    list.appendChild(answerItem);
+      const answerItem = document.createElement("li");
+      answerItem.className = "markdown-basic-outline-answer-item";
+      answerLink = document.createElement("a");
+      answerLink.className = "markdown-basic-outline-link";
+      answerLink.dataset.section = "answer";
+      answerLink.href = "#answer";
+      answerLink.textContent = messages.back;
+      answerLink.title = messages.backTitle;
+      answerItem.appendChild(answerLink);
+      list.appendChild(answerItem);
+      sectionLinks.push(questionLink, answerLink);
+    }
 
     const headingLinks = [];
     entries.forEach((entry) => {
@@ -1124,11 +1213,11 @@
         block: "start",
       });
     };
-    questionLink.addEventListener("click", (event) => {
+    questionLink?.addEventListener("click", (event) => {
       event.preventDefault();
       scrollToOutlineTarget(question);
     });
-    answerLink.addEventListener("click", (event) => {
+    answerLink?.addEventListener("click", (event) => {
       event.preventDefault();
       scrollToOutlineTarget(content);
     });
@@ -1149,7 +1238,7 @@
         return;
       }
       if (event.key === "Tab" && outline.dataset.open === "true") {
-        const focusable = [close, questionLink, answerLink, ...headingLinks];
+        const focusable = [close, ...sectionLinks, ...headingLinks];
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         if (event.shiftKey && document.activeElement === first) {
@@ -1163,20 +1252,25 @@
     };
     document.addEventListener("keydown", onKeyDown);
 
-    const links = [questionLink, answerLink, ...headingLinks];
+    const links = [...sectionLinks, ...headingLinks];
+    const headingLinkOffset = sectionLinks.length;
     let activeIndex = -1;
     const updateActiveLink = () => {
       frame = 0;
       let nextIndex = 0;
-      if (content.getBoundingClientRect().top <= 96) nextIndex = 1;
+      if (
+        settings.showSectionLinks &&
+        content.getBoundingClientRect().top <= 96
+      )
+        nextIndex = 1;
       entries.forEach((entry, index) => {
         if (entry.heading.getBoundingClientRect().top <= 96) {
-          nextIndex = index + 2;
+          nextIndex = index + headingLinkOffset;
         }
       });
       const root = document.documentElement;
       if (window.innerHeight + window.scrollY >= root.scrollHeight - 4) {
-        nextIndex = entries.length + 1;
+        nextIndex = links.length - 1;
       }
       if (nextIndex === activeIndex) return;
       links.forEach((link, index) => {
@@ -1297,6 +1391,7 @@
     // Anki/ODH fields often contain alignment whitespace that looks like an
     // indented code block. Require fenced code blocks instead.
     md.block.ruler.disable(["code"]);
+    enableCjkEmphasis(md);
     enableMarkdownMath(md);
 
     // 重写行内代码渲染规则

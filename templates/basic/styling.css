@@ -347,6 +347,7 @@
     max-width: calc(100% - 0.35em);
 }
 
+/* shared-markdown-outline:start */
 .markdown-basic-outline-toggle,
 .markdown-basic-outline-close,
 .markdown-basic-outline-scrim {
@@ -622,6 +623,13 @@
     }
 }
 
+@media (max-width: 1279px) {
+    .card.markdown-basic-has-outline {
+        padding-bottom: max(80px, calc(64px + env(safe-area-inset-bottom)));
+    }
+}
+/* shared-markdown-outline:end */
+
 @media (max-width: 600px) {
     .card {
         padding: 16px;
@@ -639,11 +647,5 @@
     .markdown-basic-content th,
     .markdown-basic-content td {
         padding: 0.45em 0.55em;
-    }
-}
-
-@media (max-width: 1279px) {
-    .card.markdown-basic-has-outline {
-        padding-bottom: max(80px, calc(64px + env(safe-area-inset-bottom)));
     }
 }

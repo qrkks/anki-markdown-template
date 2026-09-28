@@ -41,6 +41,16 @@
     --blockquote-background: rgba(31, 111, 159, 0.08);
     --blockquote-border: #1f6f9f;
     --blockquote-text: #45535d;
+    --mb-background: var(--card-background);
+    --mb-foreground: var(--text-main);
+    --mb-muted: var(--text-secondary);
+    --mb-border: var(--table-border);
+    --mb-accent: var(--blue);
+    --mb-outline-background: rgba(255, 255, 255, 0.96);
+    --mb-outline-hover: #eef6fb;
+    --mb-outline-active: #d9edf8;
+    --mb-outline-shadow: 0 16px 40px rgba(31, 35, 40, 0.18);
+    --mb-outline-scrim: transparent;
 }
 
 /* =========================
@@ -73,6 +83,10 @@
     --blockquote-background: rgba(39, 134, 187, 0.14);
     --blockquote-border: #2786bb;
     --blockquote-text: #d7dee5;
+    --mb-outline-background: rgba(31, 35, 40, 0.96);
+    --mb-outline-hover: #2d3743;
+    --mb-outline-active: #243e50;
+    --mb-outline-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
 }
 
 /* =========================
@@ -413,6 +427,15 @@ h.POSD {
     padding: 0;
     margin: 0.8em 0 0.35em;
     line-height: 1.25;
+}
+
+[data-markdown-outline="vocabulary"] [data-markdown] h1,
+[data-markdown-outline="vocabulary"] [data-markdown] h2,
+[data-markdown-outline="vocabulary"] [data-markdown] h3,
+[data-markdown-outline="vocabulary"] [data-markdown] h4,
+[data-markdown-outline="vocabulary"] [data-markdown] h5,
+[data-markdown-outline="vocabulary"] [data-markdown] h6 {
+    scroll-margin-top: 24px;
 }
 
 .md h1 {
