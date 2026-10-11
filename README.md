@@ -2,7 +2,7 @@
 
 <p align="right"><strong>English</strong> | <a href="README.zh-CN.md">简体中文</a></p>
 
-Ready-to-use Anki card templates with Markdown, syntax highlighting, KaTeX math, Mermaid diagrams, dark mode, and code copying.
+Ready-to-use Anki card templates with Markdown, syntax highlighting, KaTeX math, Mermaid diagrams, SVG graphics, dark mode, and code copying.
 
 [Changelog](CHANGELOG.md)
 
@@ -112,6 +112,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 - highlight.js syntax highlighting and click-to-copy
 - KaTeX inline math with `$...$` and `\(...\)`, plus display math with `$$...$$` and `\[...\]`
 - Mermaid diagrams
+- SVG graphics rendered directly from `svg` fenced code blocks
 - Anki dark mode and responsive layouts
 - DOMPurify HTML sanitization and Mermaid strict security mode
 
@@ -119,7 +120,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 
 The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 
-- Content inside fenced code blocks and inline code is excluded from HTML cleanup, so tags such as `<div>` and `<script>` are displayed as code text.
+- Content inside ordinary fenced code blocks and inline code is excluded from HTML cleanup, so tags such as `<div>` and `<script>` are displayed as code text. The `mermaid` and `svg` fences render diagrams.
 - Four-space or tab indentation does not create a code block. Use an explicit triple-backtick fence for code blocks.
 - Plain `<div>`, `<div dir="auto">`, and `<br>` elements commonly produced by Anki's editor are converted to line breaks.
 - When AnkiConnect stores editable line breaks as `<br>`, the renderer restores those breaks before recognizing fenced code. Input such as ```` ```latex<br>...<br>``` ```` therefore remains a multiline fenced block instead of becoming inline code.
@@ -128,6 +129,22 @@ The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 - Markdown parsing inside HTML containers is not additionally guaranteed. Do not wrap Markdown that requires stable rendering in complex HTML containers.
 
 These rules avoid guessing at arbitrary rich-text conversions while ensuring that HTML examples are not interpreted as real page elements.
+
+### SVG code blocks
+
+Wrap a complete SVG in a `svg` fence to display the graphic directly, scaling down proportionally on narrow screens:
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 100" width="240" height="100">
+  <title>SVG demo</title>
+  <rect x="10" y="10" width="220" height="80" rx="12" fill="#2563eb"/>
+  <text x="120" y="60" text-anchor="middle" fill="white" font-size="24">SVG</text>
+</svg>
+```
+
+Graphics use an isolated image context that preserves internal SVG styles, gradients, and Chinese text without an additional library.
+Image mode disables scripts and external images, fonts, and stylesheets; embed any required resources in the SVG.
+Invalid SVG falls back to a copyable code block. Use an `xml` or `html` fence to display source code instead.
 
 ## Resource loading
 

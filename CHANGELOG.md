@@ -6,6 +6,26 @@ All notable changes to the published Anki templates are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-11
+
+### Added
+
+- Render `svg` fenced code blocks as isolated, responsive SVG images without additional dependencies, with a code fallback for malformed SVG.
+- Added a floating outline to vocabulary card backs when their content contains at least three headings.
+- Render KaTeX formulas in outline labels and follow the system language for outline controls.
+
+### Changed
+
+- Load Mermaid only when a card contains a Mermaid diagram, sharing the load within a reused WebView.
+- Enlarged Markdown Basic outline text and narrowed vocabulary content for easier reading.
+
+### Fixed
+
+- Parse bold and italic text correctly next to Chinese punctuation and CJK characters.
+- Restore Markdown headings containing Anki non-breaking spaces and fenced code stored with HTML line breaks.
+- Avoid duplicate formula text in outlines, stabilize mobile outline controls, and keep the drawer backdrop transparent.
+- Remove the previous vocabulary answer's outline when the next question opens in a reused WebView.
+
 ## [0.3.0] - 2026-09-11
 
 ### Added
@@ -65,6 +85,7 @@ All notable changes to the published Anki templates are documented here.
 - Preserved multiline display math and decoded serialized HTML entities safely.
 - Improved blockquote, code, and quote rendering behavior.
 
+[0.4.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.0...v0.1.1

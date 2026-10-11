@@ -2,7 +2,7 @@
 
 <p align="right"><a href="README.md">English</a> | <strong>简体中文</strong></p>
 
-一套可直接复制到 Anki 的卡片模板，支持 Markdown、代码高亮、KaTeX 数学公式、Mermaid 图表、暗色模式和代码复制。
+一套可直接复制到 Anki 的卡片模板，支持 Markdown、代码高亮、KaTeX 数学公式、Mermaid 图表、SVG 图形、暗色模式和代码复制。
 
 [更新日志](CHANGELOG.zh-CN.md)
 
@@ -118,6 +118,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 - highlight.js 代码高亮和点击复制
 - KaTeX 行内公式 `$...$`、`\(...\)` 与块级公式 `$$...$$`、`\[...\]`
 - Mermaid 图表
+- `svg` 围栏代码块直接渲染为 SVG 图形
 - Anki 暗色模式和响应式布局
 - DOMPurify HTML 清理与 Mermaid strict 安全模式
 
@@ -125,7 +126,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 
 本模板采用 **Markdown 优先、有限 HTML、代码原样保留** 的规则：
 
-- fenced code block 和行内代码中的内容不会参与 HTML 清理，`<div>`、`<script>` 等标签会作为代码文字显示。
+- 普通 fenced code block 和行内代码中的内容不会参与 HTML 清理，`<div>`、`<script>` 等标签会作为代码文字显示；`mermaid` 和 `svg` 围栏用于渲染图形。
 - 四个空格或制表符缩进不会生成代码块；需要代码块时请明确使用三个反引号围栏。
 - Anki 编辑器常用的无属性 `<div>`、`<div dir="auto">` 和 `<br>` 会转换成换行。
 - 当 AnkiConnect 用 `<br>` 保存可编辑换行时，渲染器会先恢复换行，再识别围栏代码。因此，```` ```latex<br>...<br>``` ```` 仍会作为多行围栏代码块处理，而不会变成行内代码。
@@ -134,6 +135,22 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 - HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
 
 这种规则避免猜测和反向转换任意富文本，同时保证 HTML 教学代码不会被当成真实页面元素。
+
+### SVG 代码框
+
+使用 `svg` 围栏包住完整的 SVG，卡片会直接显示图形，并在窄屏上等比例缩小：
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 100" width="240" height="100">
+  <title>SVG demo</title>
+  <rect x="10" y="10" width="220" height="80" rx="12" fill="#2563eb"/>
+  <text x="120" y="60" text-anchor="middle" fill="white" font-size="24">SVG</text>
+</svg>
+```
+
+图形使用独立图片模式，保留 SVG 内部样式、渐变和中文文字，不需要额外资源库。
+图片模式不会执行脚本或加载外链图片、字体、样式；需要的资源应嵌入 SVG。
+格式错误时回退为可复制的代码框。若只想展示源码，请使用 `xml` 或 `html` 围栏。
 
 ## 资源加载
 

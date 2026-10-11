@@ -417,7 +417,7 @@ test("release identities are stable and unambiguous", async () => {
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
   assert.deepEqual(Object.keys(config.fieldIds), BASIC_REQUIRED_FIELDS);
   assert.deepEqual(BASIC_REQUIRED_FIELDS, ["Front", "Back"]);
-  assert.equal(packageJson.version, "0.3.0");
+  assert.equal(packageJson.version, "0.4.0");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
   assert.match(
     packageJson.scripts["package:vocabulary"],
@@ -508,8 +508,52 @@ test("English vocabulary preset is built with its required fields", async () => 
   ]) {
     assert.match(back, new RegExp(`{{${field}}}`));
   }
-  assert.equal(front.match(/<script>/g)?.length ?? 0, 0);
+  assert.equal(front.match(/<script>/g)?.length, 1);
+  assert.match(front, /ankiMarkdownBasicOutlineCleanup/);
+  assert.match(front, /querySelectorAll\("\.markdown-basic-outline"\)/);
+  assert.doesNotMatch(front, /function renderMarkdown\(/);
   assert.equal(back.match(/<script>/g)?.length, 1);
+});
+
+test("English vocabulary front cleans an outline left by the reused WebView", async () => {
+  const source = await readFile("src/outline-cleanup.js", "utf8");
+  let cleanupCalls = 0;
+  let bodyClassRemovals = 0;
+  const removedOutlines = [];
+  const window = {
+    ankiMarkdownBasicOutlineCleanup() {
+      cleanupCalls += 1;
+    },
+  };
+  const document = {
+    body: {
+      classList: {
+        remove(name) {
+          assert.equal(name, "markdown-basic-has-outline");
+          bodyClassRemovals += 1;
+        },
+      },
+    },
+    querySelectorAll(selector) {
+      assert.equal(selector, ".markdown-basic-outline");
+      return [1, 2].map((id) => ({
+        remove() {
+          removedOutlines.push(id);
+        },
+      }));
+    },
+  };
+
+  vm.runInNewContext(source, {
+    console: {warn(...args) { throw new Error(args.join(" ")); }},
+    document,
+    window,
+  });
+
+  assert.equal(cleanupCalls, 1);
+  assert.deepEqual(removedOutlines, [1, 2]);
+  assert.equal(bodyClassRemovals, 1);
+  assert.equal("ankiMarkdownBasicOutlineCleanup" in window, false);
 });
 
 test("example and example translation render independently", async () => {
@@ -546,7 +590,9 @@ test("SPELLING and DICTATION use the shared card layout", async () => {
     assert.match(front, /class=["'][^"']*\bfront-content\b/);
     assert.match(front, /class=["'][^"']*\bcat\b/);
     assert.doesNotMatch(back, /id=["']answer["']/);
-    assert.doesNotMatch(front, /<script>/);
+    assert.equal(front.match(/<script>/g)?.length, 1);
+    assert.match(front, /ankiMarkdownBasicOutlineCleanup/);
+    assert.doesNotMatch(front, /function renderMarkdown\(/);
     assert.equal(back.match(/<script>/g)?.length, 1);
     const templateMarkup = back.split("<script>", 1)[0];
     assert.equal(
@@ -1459,6 +1505,66 @@ test("runtime restores multiline formula examples before code highlighting", asy
   context.renderMarkdown(fallback);
   assert.ok(fallback.innerHTML.includes("$$\nx &lt; y &amp; &lt;script&gt;alert(1)&lt;/script&gt;\n$$"));
   assert.doesNotMatch(fallback.innerHTML, /<script>|&amp;amp;|ANKI_MD/);
+});
+
+test("runtime routes only SVG fences to diagrams and keeps failed SVG as code", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const inputs = [];
+  const escapeHtml = (value) => value.replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const context = vm.createContext({
+    debug() {}, console,
+    escapeHtml,
+    originalMarkdownSources: new WeakMap(),
+    addCodeHighlight() {},
+    safeSetHTML(element, html) { element.innerHTML = html; },
+    window: {markdownit: MarkdownIt},
+  });
+  vm.runInContext(
+    `${extractFunction(source, "cleanHTML", "protectDisplayMathBlocks")}
+     ${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
+     ${extractFunction(source, "enableMarkdownMath", "escapeHtml")}
+     ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}
+     ${extractFunction(source, "renderMarkdown", "renderMath")}`,
+    context,
+  );
+  context.renderSvgFence = (content) => {
+    inputs.push(content);
+    return content.includes("bad") ? "" : '<img class="anki-svg-diagram" alt="SVG">';
+  };
+  const svg = '<svg viewBox="0 0 100 50"><text>$$\nx_y\n$$</text></svg>\n';
+  for (const fence of ["```svg", "~~~SVG"]) {
+    const element = {
+      dataset: {}, querySelectorAll() { return []; },
+      innerHTML: `${fence}\n${svg}${fence.slice(0, 3)}\n\n**after**`,
+    };
+    context.renderMarkdown(element);
+    assert.equal(inputs.at(-1), svg);
+    assert.match(element.innerHTML, /<img class="anki-svg-diagram"/);
+    assert.match(element.innerHTML, /<strong>after<\/strong>/);
+    assert.doesNotMatch(element.innerHTML, /<pre>|ANKI_MD/);
+  }
+  const element = {
+    dataset: {}, querySelectorAll() { return []; },
+    innerHTML: '```svg<br>bad &lt;svg&gt;<br>```',
+  };
+  context.renderMarkdown(element);
+  assert.equal(inputs.length, 3);
+  assert.match(element.innerHTML, /language-svg">bad &lt;svg&gt;/);
+  element.dataset = {};
+  element.innerHTML = '```xml\n<svg/>\n```\n\n`<svg/>`';
+  context.renderMarkdown(element);
+  assert.equal(inputs.length, 3);
+  assert.match(element.innerHTML, /language-xml">&lt;svg\/&gt;/);
+  assert.match(element.innerHTML, /<p><code>&lt;svg\/&gt;<\/code><\/p>/);
+});
+
+test("runtime leaves SVG as code when browser XML APIs are unavailable", async () => {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({window: {}});
+  vm.runInContext(extractFunction(source, "renderSvgFence", "safeSetHTML"), context);
+  assert.equal(context.renderSvgFence("<svg/>"), "");
 });
 
 test("runtime preserves Markdown between separate formulas and multiline math", async () => {

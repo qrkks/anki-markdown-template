@@ -485,6 +485,46 @@
       .replace(/&nbsp;/g, " ");
   }
 
+  function renderSvgFence(content) {
+    if (typeof window.DOMParser !== "function" ||
+        typeof window.XMLSerializer !== "function") return "";
+
+    const namespace = "http://www.w3.org/2000/svg";
+    // Try literal XML first to preserve SVG text entities. Anki may instead
+    // serialize the whole code block as escaped HTML, so decode as a fallback.
+    for (const source of [content.trim(), decodeHtmlEntities(content).trim()]) {
+      if (!source || /<!DOCTYPE\b/i.test(source)) continue;
+      try {
+        const parser = new window.DOMParser();
+        let parsed = parser.parseFromString(source, "image/svg+xml");
+        let svg = parsed.documentElement;
+        if (parsed.querySelector("parsererror") || svg?.localName !== "svg") continue;
+        // Common hand-written snippets omit xmlns. Add it before reparsing so
+        // both the root and its children belong to the SVG namespace.
+        if (!svg.namespaceURI) {
+          const xml = new window.XMLSerializer().serializeToString(svg);
+          parsed = parser.parseFromString(
+            xml.replace(/^<svg(?=[\s/>])/, `<svg xmlns="${namespace}"`),
+            "image/svg+xml",
+          );
+          svg = parsed.documentElement;
+        }
+        if (parsed.querySelector("parsererror") || svg.namespaceURI !== namespace) continue;
+
+        const xml = new window.XMLSerializer().serializeToString(svg);
+        const title = svg.querySelector("title")?.textContent.trim() || "SVG";
+        const alt = escapeHtml(title).replace(/"/g, "&quot;");
+        // SVG image mode isolates styles/IDs and disables scripts and external
+        // resources. Keep the existing HTML-only DOMPurify profile unchanged.
+        return `<img class="anki-svg-diagram" alt="${alt}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}" style="display:block;max-width:100%;height:auto;margin:1em auto;">`;
+      } catch (error) {
+        debug("SVG code block could not be parsed", error);
+      }
+    }
+    // Invalid or unsupported SVG continues through normal code highlighting.
+    return "";
+  }
+
   // 🔒 安全地设置 HTML 内容（防止脚本执行）
   function safeSetHTML(element, htmlContent) {
     if (typeof window.DOMPurify?.sanitize === "function") {
@@ -1439,6 +1479,11 @@
         return `<div class="mermaid">${escapeHtml(
           decodeHtmlEntities(content),
         )}</div>`;
+      }
+
+      if (lang.toLowerCase() === "svg") {
+        const diagram = renderSvgFence(content);
+        if (diagram) return diagram;
       }
 
       // 直接使用 token 的内容进行高亮，因为 cleanHTML 已经处理过转义

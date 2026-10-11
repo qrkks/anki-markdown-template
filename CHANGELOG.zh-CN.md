@@ -6,6 +6,26 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-11
+
+### 新增
+
+- `svg` 围栏代码块直接渲染为独立、响应式 SVG 图片，无需额外依赖；SVG 格式错误时回退为代码框。
+- 词汇卡背面内容包含至少三个标题时显示浮动大纲。
+- 大纲标题直接显示 KaTeX 公式，大纲控件跟随系统语言。
+
+### 变更
+
+- 仅在卡片包含 Mermaid 图表时加载 Mermaid，并在复用的 WebView 内共享加载结果。
+- 增大 Markdown Basic 大纲字号，收窄词汇卡正文以改善阅读。
+
+### 修复
+
+- 正确解析紧邻中文标点和中日韩字符的加粗、斜体文本。
+- 恢复包含 Anki 不换行空格的 Markdown 标题，以及以 HTML 换行保存的围栏代码。
+- 避免大纲中的公式文字重复，稳定移动端大纲控件，并保持抽屉背景透明。
+- 在复用的 WebView 中打开下一张词汇卡正面时，清理上一张背面遗留的大纲。
+
 ## [0.3.0] - 2026-09-11
 
 ### 新增
@@ -65,6 +85,7 @@
 - 正确保留多行显示公式并安全解码序列化的 HTML 实体。
 - 改进块引用、代码和引号的渲染行为。
 
+[0.4.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.0...v0.1.1
