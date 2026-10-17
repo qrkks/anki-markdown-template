@@ -1425,6 +1425,78 @@
     enableCjkEmphasis(md);
     enableMarkdownMath(md);
 
+    // Treat Markdown links to known image URLs as linked images. This also
+    // covers image hosts that omit a filename extension, such as OpenAI's
+    // inline image URLs, while leaving ordinary article links untouched.
+    const isImageDestination = (destination) => {
+      if (typeof destination !== "string" || !destination.trim()) return false;
+      try {
+        const url = new URL(destination, window.location.href);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+        return (
+          /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)$/i.test(url.pathname) ||
+          url.hostname.toLowerCase() === "images.openai.com"
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const linkedImageText = (tokens) =>
+      tokens
+        .map((token) => {
+          if (["text", "code_inline", "html_inline", "anki_math"].includes(token.type)) {
+            return token.content || "";
+          }
+          if (token.type === "softbreak" || token.type === "hardbreak") return " ";
+          return Array.isArray(token.children) ? linkedImageText(token.children) : "";
+        })
+        .join("")
+        .trim();
+
+    md.core.ruler.after("inline", "anki-linked-images", (state) => {
+      for (const inline of state.tokens) {
+        if (inline.type !== "inline" || !Array.isArray(inline.children)) continue;
+        const children = inline.children;
+
+        for (let index = 0; index < children.length; index += 1) {
+          const linkOpen = children[index];
+          const destination = linkOpen.type === "link_open" && linkOpen.attrGet("href");
+          if (!destination || !isImageDestination(destination)) continue;
+
+          let closeIndex = index + 1;
+          while (closeIndex < children.length && children[closeIndex].type !== "link_close") {
+            closeIndex += 1;
+          }
+          if (closeIndex >= children.length) continue;
+
+          const alt = linkedImageText(children.slice(index + 1, closeIndex));
+          const Token = linkOpen.constructor;
+          const image = new Token("image", "img", 0);
+          image.attrSet("src", destination);
+          image.attrSet("alt", alt);
+          image.attrSet("style", "max-width:100%;height:auto;");
+          image.content = alt;
+          const altToken = new Token("text", "", 0);
+          altToken.content = alt;
+          image.children = [altToken];
+
+          linkOpen.attrJoin("class", "anki-linked-image");
+          linkOpen.attrJoin("style", "display:inline-block;max-width:100%;");
+          children.splice(index + 1, closeIndex - index - 1, image);
+        }
+      }
+    });
+
+    const defaultImageRenderer = md.renderer.rules.image;
+    md.renderer.rules.image = function (tokens, idx, options, env, slf) {
+      const image = tokens[idx];
+      if (!image.attrGet("style")) {
+        image.attrSet("style", "max-width:100%;height:auto;");
+      }
+      return defaultImageRenderer(tokens, idx, options, env, slf);
+    };
+
     // 重写行内代码渲染规则
     md.renderer.rules.code_inline = function (tokens, idx, options, env, slf) {
       var token = tokens[idx];
