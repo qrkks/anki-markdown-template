@@ -1507,7 +1507,7 @@ test("runtime restores multiline formula examples before code highlighting", asy
   assert.doesNotMatch(fallback.innerHTML, /<script>|&amp;amp;|ANKI_MD/);
 });
 
-test("runtime routes only SVG fences to diagrams and keeps failed SVG as code", async () => {
+test("runtime routes labeled and unlabeled SVG fences to diagrams and keeps other code", async () => {
   const source = await readFile("src/template.js", "utf8");
   const inputs = [];
   const escapeHtml = (value) => value.replaceAll("&", "&amp;")
@@ -1529,12 +1529,12 @@ test("runtime routes only SVG fences to diagrams and keeps failed SVG as code", 
      ${extractFunction(source, "renderMarkdown", "renderMath")}`,
     context,
   );
+  const svg = '<svg viewBox="0 0 100 50"><text>$$\nx_y\n$$</text></svg>\n';
   context.renderSvgFence = (content) => {
     inputs.push(content);
-    return content.includes("bad") ? "" : '<img class="anki-svg-diagram" alt="SVG">';
+    return content === svg ? '<img class="anki-svg-diagram" alt="SVG">' : "";
   };
-  const svg = '<svg viewBox="0 0 100 50"><text>$$\nx_y\n$$</text></svg>\n';
-  for (const fence of ["```svg", "~~~SVG"]) {
+  for (const fence of ["```svg", "~~~SVG", "```", "~~~   "]) {
     const element = {
       dataset: {}, querySelectorAll() { return []; },
       innerHTML: `${fence}\n${svg}${fence.slice(0, 3)}\n\n**after**`,
@@ -1550,14 +1550,28 @@ test("runtime routes only SVG fences to diagrams and keeps failed SVG as code", 
     innerHTML: '```svg<br>bad &lt;svg&gt;<br>```',
   };
   context.renderMarkdown(element);
-  assert.equal(inputs.length, 3);
+  assert.equal(inputs.length, 5);
   assert.match(element.innerHTML, /language-svg">bad &lt;svg&gt;/);
   element.dataset = {};
   element.innerHTML = '```xml\n<svg/>\n```\n\n`<svg/>`';
   context.renderMarkdown(element);
-  assert.equal(inputs.length, 3);
+  assert.equal(inputs.length, 5);
   assert.match(element.innerHTML, /language-xml">&lt;svg\/&gt;/);
   assert.match(element.innerHTML, /<p><code>&lt;svg\/&gt;<\/code><\/p>/);
+  for (const input of ["const x = 1;", "<div>HTML</div>", "bad <svg>"]) {
+    element.dataset = {};
+    element.innerHTML = `\`\`\`\n${input}\n\`\`\``;
+    context.renderMarkdown(element);
+    assert.equal(inputs.at(-1), `${input}\n`);
+    assert.match(element.innerHTML, /<pre><code/);
+    assert.doesNotMatch(element.innerHTML, /anki-svg-diagram/);
+  }
+  const inputCount = inputs.length;
+  element.dataset = {};
+  element.innerHTML = '```html\n<svg/>\n```\n\n```text\n<svg/>\n```';
+  context.renderMarkdown(element);
+  assert.equal(inputs.length, inputCount);
+  assert.doesNotMatch(element.innerHTML, /anki-svg-diagram/);
 });
 
 test("runtime leaves SVG as code when browser XML APIs are unavailable", async () => {

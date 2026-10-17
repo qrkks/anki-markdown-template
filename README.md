@@ -112,7 +112,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 - highlight.js syntax highlighting and click-to-copy
 - KaTeX inline math with `$...$` and `\(...\)`, plus display math with `$$...$$` and `\[...\]`
 - Mermaid diagrams
-- SVG graphics rendered directly from `svg` fenced code blocks
+- SVG graphics rendered directly from `svg` or unlabeled fenced code blocks
 - Anki dark mode and responsive layouts
 - DOMPurify HTML sanitization and Mermaid strict security mode
 
@@ -120,7 +120,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 
 The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 
-- Content inside ordinary fenced code blocks and inline code is excluded from HTML cleanup, so tags such as `<div>` and `<script>` are displayed as code text. The `mermaid` and `svg` fences render diagrams.
+- Content inside ordinary fenced code blocks and inline code is excluded from HTML cleanup, so tags such as `<div>` and `<script>` are displayed as code text. The `mermaid` and `svg` fences render diagrams; unlabeled fences containing a complete SVG document also render as images.
 - Four-space or tab indentation does not create a code block. Use an explicit triple-backtick fence for code blocks.
 - Plain `<div>`, `<div dir="auto">`, and `<br>` elements commonly produced by Anki's editor are converted to line breaks.
 - When AnkiConnect stores editable line breaks as `<br>`, the renderer restores those breaks before recognizing fenced code. Input such as ```` ```latex<br>...<br>``` ```` therefore remains a multiline fenced block instead of becoming inline code.
@@ -143,6 +143,7 @@ Wrap a complete SVG in a `svg` fence to display the graphic directly, scaling do
 ```
 
 Graphics use an isolated image context that preserves internal SVG styles, gradients, and Chinese text without an additional library.
+The `svg` label is optional: an unlabeled fence also renders as an image when its entire content is a valid SVG document. Other unlabeled code remains code.
 Image mode disables scripts and external images, fonts, and stylesheets; embed any required resources in the SVG.
 Invalid SVG falls back to a copyable code block. Use an `xml` or `html` fence to display source code instead.
 

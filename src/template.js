@@ -1553,7 +1553,9 @@
         )}</div>`;
       }
 
-      if (lang.toLowerCase() === "svg") {
+      // An unlabeled fence may contain a complete SVG document. The XML parser
+      // accepts only an SVG root; other code keeps the ordinary code fallback.
+      if (lang.toLowerCase() === "svg" || !info) {
         const diagram = renderSvgFence(content);
         if (diagram) return diagram;
       }

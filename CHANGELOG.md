@@ -6,6 +6,10 @@ All notable changes to the published Anki templates are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Render complete SVG documents inside unlabeled fenced code blocks as images, preserving ordinary code and explicit source-display fences.
+
 ## [0.4.0] - 2026-10-11
 
 ### Added
