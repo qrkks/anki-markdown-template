@@ -112,6 +112,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 ## 功能
 
 - Markdown 标题、列表、链接、表格和强调
+- Google S2 favicon 链接会在链接文字旁显示小型网站图标
 - 根据 Markdown Basic 背面标题生成的响应式浮动大纲
 - 可选的 `todo::` / `source::` 标签分组，并适配浅色和深色模式
 - fenced code block 与行内代码
@@ -132,6 +133,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 - 当 AnkiConnect 用 `<br>` 保存可编辑换行时，渲染器会先恢复换行，再识别围栏代码。因此，```` ```latex<br>...<br>``` ```` 仍会作为多行围栏代码块处理，而不会变成行内代码。
 - Anki 编辑器生成的空 `<p>` 会转换成空行；无样式 `<p>` 中以 `#` 开头的标题会展开为 Markdown，并把标题标记后的 `&nbsp;` 恢复成普通空格。
 - 带 `class`、`style` 等属性的 `<div>` 以及图片、表格、链接等其他 HTML 会保留，并在渲染后交给 DOMPurify 清理。
+- 单独一段的 Google S2 favicon 链接后若紧跟简短来源名，模板会将它们合并为带 16px 网站图标的可点击来源标签，例如 `[image](https://www.google.com/s2/favicons?domain=https://www.bmj.com&sz=32)` 后一段写 `The BMJ`。
 - HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
 
 这种规则避免猜测和反向转换任意富文本，同时保证 HTML 教学代码不会被当成真实页面元素。

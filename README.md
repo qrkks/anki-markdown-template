@@ -106,6 +106,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 ## Features
 
 - Markdown headings, lists, links, tables, and emphasis
+- Google S2 favicon links show a compact site icon beside their link text
 - Responsive floating outline generated from headings on the back of Markdown Basic cards
 - Optional `todo::` / `source::` tag grouping with light and dark mode styles
 - Fenced code blocks and inline code
@@ -126,6 +127,7 @@ The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 - When AnkiConnect stores editable line breaks as `<br>`, the renderer restores those breaks before recognizing fenced code. Input such as ```` ```latex<br>...<br>``` ```` therefore remains a multiline fenced block instead of becoming inline code.
 - Empty `<p>` elements produced by Anki become blank lines. A heading beginning with `#` inside an unstyled `<p>` is restored to Markdown, and `&nbsp;` after the heading marker becomes a regular space.
 - `<div>` elements with attributes such as `class` or `style`, along with other HTML such as images, tables, and links, are preserved and sanitized by DOMPurify after rendering.
+- A standalone Google S2 favicon link followed by a short source name displays as one linked label with a 16px site icon, for example `[image](https://www.google.com/s2/favicons?domain=https://www.bmj.com&sz=32)` followed by `The BMJ` on the next paragraph.
 - Markdown parsing inside HTML containers is not additionally guaranteed. Do not wrap Markdown that requires stable rendering in complex HTML containers.
 
 These rules avoid guessing at arbitrary rich-text conversions while ensuring that HTML examples are not interpreted as real page elements.

@@ -1483,6 +1483,59 @@
       }
     };
 
+    const isGoogleFaviconDestination = (destination) => {
+      if (typeof destination !== "string" || !destination.trim()) return false;
+      try {
+        const url = new URL(destination, window.location.href);
+        if (
+          url.protocol !== "https:" ||
+          !["google.com", "www.google.com"].includes(url.hostname.toLowerCase()) ||
+          url.port ||
+          url.username ||
+          url.password ||
+          url.pathname !== "/s2/favicons"
+        ) {
+          return false;
+        }
+
+        const domain = url.searchParams.get("domain") || url.searchParams.get("domain_url");
+        if (!domain || /\s/.test(domain)) return false;
+        const site = new URL(domain.includes(":") ? domain : `https://${domain}`);
+        return (
+          (site.protocol === "https:" || site.protocol === "http:") &&
+          Boolean(site.hostname) &&
+          !site.username &&
+          !site.password
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const getStandaloneFaviconLink = (inline) => {
+      if (inline.type !== "inline" || !Array.isArray(inline.children)) return null;
+      const children = [...inline.children];
+      while (children[0]?.type === "text" && !children[0].content.trim()) children.shift();
+      while (children.at(-1)?.type === "text" && !children.at(-1).content.trim()) children.pop();
+      if (children[0]?.type !== "link_open" || children.at(-1)?.type !== "link_close") return null;
+      if (children.slice(1, -1).some((token) => ["link_open", "link_close", "image"].includes(token.type))) return null;
+
+      const linkOpen = children[0];
+      const destination = linkOpen.attrGet("href");
+      if (linkOpen.meta?.ankiSourceFavicon || !isGoogleFaviconDestination(destination)) return null;
+      return { linkOpen, linkClose: children.at(-1), destination };
+    };
+
+    const isSourceName = (inline) => {
+      const text = typeof inline.content === "string" ? inline.content.trim() : "";
+      return Boolean(text) &&
+        text.length <= 100 &&
+        !/[\r\n。！？!?;；:：]|\.\s|\.$/.test(text) &&
+        !/^\+?\d+(?:\.\d+)?%?$/.test(text) &&
+        Array.isArray(inline.children) &&
+        inline.children.every((token) => ["text", "strong_open", "strong_close", "em_open", "em_close"].includes(token.type));
+    };
+
     const linkedImageText = (tokens) =>
       tokens
         .map((token) => {
@@ -1496,6 +1549,47 @@
         .trim();
 
     md.core.ruler.after("inline", "anki-linked-images", (state) => {
+      // Match Zotero's compact source-reference format: a standalone favicon
+      // link followed by a short source name becomes one linked icon label.
+      for (let index = 0; index < state.tokens.length - 5; index += 1) {
+        const opening = state.tokens[index];
+        const inline = state.tokens[index + 1];
+        const closing = state.tokens[index + 2];
+        const nextOpening = state.tokens[index + 3];
+        const nextInline = state.tokens[index + 4];
+        const nextClosing = state.tokens[index + 5];
+        if (
+          opening.type !== "paragraph_open" || opening.hidden ||
+          inline.type !== "inline" || closing.type !== "paragraph_close" ||
+          nextOpening.type !== "paragraph_open" || nextOpening.hidden ||
+          nextInline.type !== "inline" || nextClosing.type !== "paragraph_close" ||
+          !isSourceName(nextInline)
+        ) {
+          continue;
+        }
+
+        const sourceLink = getStandaloneFaviconLink(inline);
+        if (!sourceLink) continue;
+
+        const Token = sourceLink.linkOpen.constructor;
+        const favicon = new Token("anki_source_favicon", "img", 0);
+        favicon.attrSet("src", sourceLink.destination);
+        const space = new Token("text", "", 0);
+        space.content = " ";
+        sourceLink.linkOpen.attrJoin("class", "anki-source-favicon-link");
+        sourceLink.linkOpen.attrSet("aria-label", nextInline.content.trim());
+        sourceLink.linkOpen.meta = { ...sourceLink.linkOpen.meta, ankiSourceFavicon: true };
+        nextInline.children = [
+          sourceLink.linkOpen,
+          favicon,
+          space,
+          ...nextInline.children,
+          sourceLink.linkClose,
+        ];
+        state.tokens.splice(index, 3);
+        index -= 1;
+      }
+
       for (const inline of state.tokens) {
         if (inline.type !== "inline" || !Array.isArray(inline.children)) continue;
         const children = inline.children;
@@ -1503,13 +1597,24 @@
         for (let index = 0; index < children.length; index += 1) {
           const linkOpen = children[index];
           const destination = linkOpen.type === "link_open" && linkOpen.attrGet("href");
-          if (!destination || !isImageDestination(destination)) continue;
+          if (!destination || linkOpen.meta?.ankiSourceFavicon) continue;
 
           let closeIndex = index + 1;
           while (closeIndex < children.length && children[closeIndex].type !== "link_close") {
             closeIndex += 1;
           }
           if (closeIndex >= children.length) continue;
+
+          if (isGoogleFaviconDestination(destination)) {
+            const Token = linkOpen.constructor;
+            const favicon = new Token("anki_source_favicon", "img", 0);
+            favicon.attrSet("src", destination);
+            children.splice(closeIndex, 0, favicon);
+            index = closeIndex;
+            continue;
+          }
+
+          if (!isImageDestination(destination)) continue;
 
           const alt = linkedImageText(children.slice(index + 1, closeIndex));
           const Token = linkOpen.constructor;
@@ -1536,6 +1641,16 @@
         image.attrSet("style", "max-width:100%;height:auto;");
       }
       return defaultImageRenderer(tokens, idx, options, env, slf);
+    };
+
+    md.renderer.rules.anki_source_favicon = function (tokens, idx) {
+      const src = md.utils.escapeHtml(tokens[idx].attrGet("src") || "");
+      return (
+        `<img class="anki-source-favicon" src="${src}" alt="" aria-hidden="true" ` +
+        `width="16" height="16" loading="lazy" decoding="async" referrerpolicy="no-referrer" ` +
+        `style="display:inline-block;width:16px;height:16px;max-width:none;max-height:none;` +
+        `margin:0 0 0 0.25em;vertical-align:middle;object-fit:contain;border-radius:0;">`
+      );
     };
 
     // 重写行内代码渲染规则
