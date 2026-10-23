@@ -417,7 +417,7 @@ test("release identities are stable and unambiguous", async () => {
   assert.equal(config.artifactName, "anki-markdown-basic.apkg");
   assert.deepEqual(Object.keys(config.fieldIds), BASIC_REQUIRED_FIELDS);
   assert.deepEqual(BASIC_REQUIRED_FIELDS, ["Front", "Back"]);
-  assert.equal(packageJson.version, "0.4.0");
+  assert.equal(packageJson.version, "0.5.0");
   assert.match(packageJson.scripts["package:basic"], /package-basic\.mjs/);
   assert.match(
     packageJson.scripts["package:vocabulary"],
@@ -1445,6 +1445,120 @@ test("runtime preserves formula examples in inline and fenced code", async () =>
     assert.equal(render(`\`${formula}\``), `<p><code>${formula}</code></p>\n`);
     assert.equal(render(`\`\`\`tex\n${formula}\n\`\`\``), `<pre><code class="language-tex">${formula}\n</code></pre>\n`);
   }
+});
+
+async function createRuntimeMarkdownRenderer() {
+  const source = await readFile("src/template.js", "utf8");
+  const context = vm.createContext({
+    debug() {},
+    console: {warn() {}, error(...args) { throw new Error(args.join(" ")); }},
+    URL,
+    escapeHtml(value) {
+      return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    },
+    originalMarkdownSources: new WeakMap(),
+    addCodeHighlight() {},
+    safeSetHTML(element, html) { element.innerHTML = html; },
+    window: {
+      markdownit: MarkdownIt,
+      location: {href: "http://127.0.0.1:8765/"},
+    },
+  });
+  vm.runInContext(
+    `${extractFunction(source, "cleanHTML", "protectDisplayMathBlocks")}
+     ${extractFunction(source, "protectDisplayMathBlocks", "restoreDisplayMathBlocks")}
+     ${extractFunction(source, "restoreDisplayMathBlocks", "enableMarkdownMath")}
+     ${extractFunction(source, "enableMarkdownMath", "escapeHtml")}
+     ${extractFunction(source, "decodeHtmlEntities", "safeSetHTML")}
+     ${extractFunction(source, "renderMarkdown", "renderMath")}`,
+    context,
+  );
+  return (input) => {
+    const element = {dataset: {}, querySelectorAll() { return []; }, innerHTML: input};
+    context.renderMarkdown(element);
+    assert.equal(element.dataset.markdownProcessed, "true");
+    return element.innerHTML;
+  };
+}
+
+test("runtime displays image links and extensionless OpenAI images without changing article links", async () => {
+  const render = await createRuntimeMarkdownRenderer();
+  for (const destination of [
+    "https://example.com/plot.PNG?size=large#preview",
+    "https://example.com/diagram.svg",
+    "https://images.openai.com/generated/opaque-image-id",
+  ]) {
+    const html = render(`[**Figure** 1](${destination})`);
+    assert.match(html, /<a [^>]*class="anki-linked-image"/);
+    assert.ok(html.includes(`href="${destination}"`));
+    assert.ok(html.includes(`<img src="${destination}" alt="Figure 1"`));
+    assert.match(html, /style="max-width:100%;height:auto;"/);
+    assert.doesNotMatch(html, /<strong>/);
+  }
+  for (const destination of [
+    "https://example.com/article",
+    "https://example.com/download?filename=plot.png",
+    "https://images.openai.com.example.com/generated/opaque-image-id",
+  ]) {
+    const html = render(`[Read article](${destination})`);
+    assert.match(html, />Read article<\/a>/);
+    assert.doesNotMatch(html, /<img|anki-linked-image/);
+  }
+  assert.match(render("![Figure](https://example.com/plot.png)"), /<img [^>]*style="max-width:100%;height:auto;"/);
+});
+
+test("runtime keeps Markdown image links literal inside inline and fenced code", async () => {
+  const render = await createRuntimeMarkdownRenderer();
+  const image = "[Figure](https://example.com/plot.png)";
+  const favicon = "[image](https://www.google.com/s2/favicons?domain=example.com)";
+  const html = render(`\`${image}\`\n\n\`\`\`markdown\n${favicon}\n\nExample Source\n\`\`\``);
+  assert.ok(html.includes(`<code>${image}</code>`));
+  assert.ok(html.includes(`${favicon}\n\nExample Source`));
+  assert.doesNotMatch(html, /<img|anki-linked-image|anki-source-favicon/);
+});
+
+test("runtime renders Google S2 favicon links as compact accessible source labels", async () => {
+  const render = await createRuntimeMarkdownRenderer();
+  const destination = "https://www.google.com/s2/favicons?domain=https://www.bmj.com&sz=32";
+  const html = render(`[image](${destination})\n\nThe BMJ`);
+  assert.equal((html.match(/<p>/g) || []).length, 1);
+  assert.match(html, /class="anki-source-favicon-link" aria-label="The BMJ"/);
+  assert.match(html, /<img class="anki-source-favicon" [^>]*alt="" aria-hidden="true" width="16" height="16"/);
+  assert.match(html, /referrerpolicy="no-referrer"/);
+  assert.match(html, /> The BMJ<\/a>/);
+  assert.doesNotMatch(html, /anki-linked-image|>image</);
+  assert.match(render(`[image](${destination})\n\n**The BMJ**`), /> <strong>The BMJ<\/strong><\/a>/);
+
+  const inline = render("[Example Source](https://google.com/s2/favicons?domain_url=https://example.com)");
+  assert.match(inline, />Example Source<img class="anki-source-favicon"/);
+  assert.doesNotMatch(inline, /anki-linked-image/);
+});
+
+test("runtime leaves unrelated or unsafe favicon destinations and following prose unchanged", async () => {
+  const render = await createRuntimeMarkdownRenderer();
+  for (const destination of [
+    "http://www.google.com/s2/favicons?domain=example.com",
+    "https://www.google.com.example.com/s2/favicons?domain=example.com",
+    "https://user@www.google.com/s2/favicons?domain=example.com",
+    "https://www.google.com:8443/s2/favicons?domain=example.com",
+    "https://www.google.com/other?domain=example.com",
+    "https://www.google.com/s2/favicons?sz=32",
+    "https://www.google.com/s2/favicons?domain=javascript:alert(1)",
+    "https://www.google.com/s2/favicons?domain=https://user@example.com",
+  ]) {
+    const html = render(`[image](${destination})\n\nExample Source`);
+    assert.equal((html.match(/<p>/g) || []).length, 2);
+    assert.match(html, />image<\/a>/);
+    assert.doesNotMatch(html, /<img|anki-source-favicon/);
+  }
+  const destination = "https://www.google.com/s2/favicons?domain=example.com";
+  for (const following of ["This is a complete sentence.", "42", "[Another link](https://example.com)"]) {
+    const html = render(`[image](${destination})\n\n${following}`);
+    assert.equal((html.match(/<p>/g) || []).length, 2);
+    assert.match(html, /anki-source-favicon/);
+    assert.doesNotMatch(html, /anki-source-favicon-link/);
+  }
+  assert.doesNotMatch(render("[unsafe](javascript:alert(1))"), /<a|<img/);
 });
 
 test("runtime restores multiline formula examples before code highlighting", async () => {

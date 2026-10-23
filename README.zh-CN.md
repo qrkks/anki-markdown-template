@@ -112,6 +112,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 ## 功能
 
 - Markdown 标题、列表、链接、表格和强调
+- 指向图片地址的 Markdown 链接显示为可点击的响应式图片，支持 `images.openai.com` 链接
 - Google S2 favicon 链接会在链接文字旁显示小型网站图标
 - 根据 Markdown Basic 背面标题生成的响应式浮动大纲
 - 可选的 `todo::` / `source::` 标签分组，并适配浅色和深色模式
@@ -134,6 +135,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 - Anki 编辑器生成的空 `<p>` 会转换成空行；无样式 `<p>` 中以 `#` 开头的标题会展开为 Markdown，并把标题标记后的 `&nbsp;` 恢复成普通空格。
 - 带 `class`、`style` 等属性的 `<div>` 以及图片、表格、链接等其他 HTML 会保留，并在渲染后交给 DOMPurify 清理。
 - 单独一段的 Google S2 favicon 链接后若紧跟简短来源名，模板会将它们合并为带 16px 网站图标的可点击来源标签，例如 `[image](https://www.google.com/s2/favicons?domain=https://www.bmj.com&sz=32)` 后一段写 `The BMJ`。
+- 指向受支持图片扩展名的 HTTP(S) 地址，或指向 `images.openai.com` 的链接，会显示为可点击图片。远程图片和网站图标不会打包进 APKG，加载它们需要网络连接或已有的 WebView 缓存。
 - HTML 容器内部是否继续解析 Markdown 不做额外保证；需要稳定展示的 Markdown 不应包在复杂 HTML 容器中。
 
 这种规则避免猜测和反向转换任意富文本，同时保证 HTML 教学代码不会被当成真实页面元素。
@@ -167,7 +169,7 @@ Markdown Basic 中普通标签保持现有样式。使用以下前缀即可启�
 - `_katex-0.18.1.min.js`
 - `_auto-render-0.18.1.js`
 - `_mhchem-0.18.1.js`
-- `_markdown-it-14.3.0.min.js`
+- `_markdown-it-14.3.3.min.js`
 - `_mermaid-11.16.0.min.js`
 
 `pnpm run install:anki` 用于更新已安装且模型 ID 匹配的 `单词` 笔记类型。它会先按固定 URL 下载缺失或校验不符的资源，通过 SHA-256

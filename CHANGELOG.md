@@ -6,9 +6,17 @@ All notable changes to the published Anki templates are documented here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-23
+
 ### Added
 
+- Render Markdown links to recognized image URLs as clickable, responsive images, including extensionless `images.openai.com` links.
 - Render complete SVG documents inside unlabeled fenced code blocks as images, preserving ordinary code and explicit source-display fences.
+- Display Google S2 favicon links with compact 16px site icons and combine a standalone favicon link with the following short source name.
+
+### Security
+
+- Update the bundled Markdown parser, pinned CDN fallback, and test dependency to markdown-it 14.3.3 to address known parsing performance vulnerabilities.
 
 ## [0.4.0] - 2026-10-11
 
@@ -89,6 +97,7 @@ All notable changes to the published Anki templates are documented here.
 - Preserved multiline display math and decoded serialized HTML entities safely.
 - Improved blockquote, code, and quote rendering behavior.
 
+[0.5.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0

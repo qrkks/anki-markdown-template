@@ -6,9 +6,17 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-23
+
 ### 新增
 
+- 指向可识别图片地址的 Markdown 链接直接显示为可点击的响应式图片，支持无文件扩展名的 `images.openai.com` 链接。
 - 无语言标签的围栏代码块包含完整 SVG 文档时自动显示为图片，普通代码及明确指定源码语言的代码框保持原样。
+- Google S2 favicon 链接显示紧凑的 16px 网站图标，并可将独立图标链接与后一段简短来源名合并。
+
+### 安全
+
+- 将打包的 Markdown 解析器、固定版本 CDN 回退资源及测试依赖更新至 markdown-it 14.3.3，修复已知的解析性能漏洞。
 
 ## [0.4.0] - 2026-10-11
 
@@ -89,6 +97,7 @@
 - 正确保留多行显示公式并安全解码序列化的 HTML 实体。
 - 改进块引用、代码和引号的渲染行为。
 
+[0.5.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/qrkks/anki-markdown-template/compare/v0.1.1...v0.2.0

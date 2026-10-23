@@ -78,9 +78,9 @@ export const RESOURCE_MANIFEST = [
     sha256: "aaf20145c0b8ecd450ccf6eb0cebece2f77d8e6a02c30d291f28c1167b57b2df",
   },
   {
-    filename: "_markdown-it-14.3.0.min.js",
-    url: "https://cdn.jsdelivr.net/npm/markdown-it@14.3.0/dist/markdown-it.min.js",
-    sha256: "70fe17bd06c7fa819f03a1ed10957904318103624198845dc893b309bf495e28",
+    filename: "_markdown-it-14.3.3.min.js",
+    url: "https://cdn.jsdelivr.net/npm/markdown-it@14.3.3/dist/markdown-it.min.js",
+    sha256: "494ba53db1aac9f676317dda7062bd9545b5f0bbe3f12b0ab1ab4f813825cfb0",
   },
 ];
 

@@ -106,6 +106,7 @@ Both templates share the Markdown renderer in `src/template.js`. Running `pnpm r
 ## Features
 
 - Markdown headings, lists, links, tables, and emphasis
+- Markdown links to image URLs display clickable, responsive images, including `images.openai.com` links
 - Google S2 favicon links show a compact site icon beside their link text
 - Responsive floating outline generated from headings on the back of Markdown Basic cards
 - Optional `todo::` / `source::` tag grouping with light and dark mode styles
@@ -128,6 +129,7 @@ The renderer follows a **Markdown-first, limited-HTML, code-preserving** policy:
 - Empty `<p>` elements produced by Anki become blank lines. A heading beginning with `#` inside an unstyled `<p>` is restored to Markdown, and `&nbsp;` after the heading marker becomes a regular space.
 - `<div>` elements with attributes such as `class` or `style`, along with other HTML such as images, tables, and links, are preserved and sanitized by DOMPurify after rendering.
 - A standalone Google S2 favicon link followed by a short source name displays as one linked label with a 16px site icon, for example `[image](https://www.google.com/s2/favicons?domain=https://www.bmj.com&sz=32)` followed by `The BMJ` on the next paragraph.
+- Links to HTTP(S) image URLs ending in a supported image extension, or hosted on `images.openai.com`, display as clickable images. Remote images and site icons are not bundled into the APKG; loading them requires a network connection or an existing WebView cache.
 - Markdown parsing inside HTML containers is not additionally guaranteed. Do not wrap Markdown that requires stable rendering in complex HTML containers.
 
 These rules avoid guessing at arbitrary rich-text conversions while ensuring that HTML examples are not interpreted as real page elements.
@@ -161,7 +163,7 @@ The runtime first attempts to load these files from Anki's media directory, then
 - `_katex-0.18.1.min.js`
 - `_auto-render-0.18.1.js`
 - `_mhchem-0.18.1.js`
-- `_markdown-it-14.3.0.min.js`
+- `_markdown-it-14.3.3.min.js`
 - `_mermaid-11.16.0.min.js`
 
 `pnpm run install:anki` updates an installed `单词` note type whose model ID matches the managed release identity. It downloads missing or invalid resources from pinned URLs, verifies their SHA-256 hashes, writes them to Anki's media collection, and then updates the templates. The 20 WOFF2 fonts used by KaTeX are installed as well, allowing normal installations to work completely offline. If an optional resource fails both locally and from the CDN, only that feature is disabled; other content continues to render.
